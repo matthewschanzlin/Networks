@@ -35,6 +35,7 @@ s.send('cs3700fall2020 HELLO 001699953\n')
 bits = 4096
 finding = True
 flag = ''
+count = 0
 
 while finding:
     more_data = True
@@ -53,10 +54,12 @@ while finding:
         symbol = data_pieces[2]
         symbols = data_pieces[3]
         count = symbols.count(symbol)
-        response = 'cs3700fall2020 COUNT ' + str(count) + '\n'
+        response = 'cs3700fall2020 COUNT {}\n'.format(str(count))
+        print('response ', response)
         s.send(response)
     elif message == 'BYE':
         finding = False
         flag = data_pieces[2]
         print('FLAG ', flag)
     print('LOOP BACK')
+print('FLAG ', flag)
