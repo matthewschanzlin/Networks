@@ -2,7 +2,7 @@ import socket
 import sys
 import ssl
 
-PORT = 0
+PORT = 27993
 HOSTNAME = ''
 NUID = 0
 args = sys.argv
@@ -25,16 +25,11 @@ for i in range(1, len(args)):
     else:
         NUID = arg
 
-print('PORT ', PORT)
-print('use_ssl ', use_ssl)
-print('HOSTNAME ', HOSTNAME)
-print('NUID ', NUID)
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((HOSTNAME, PORT))
 if use_ssl:
     context = ssl.SSLContext(ssl.PROTOCOL_TLS)
     s = context.wrap_socket(s, server_side=False, server_hostname=HOSTNAME)
-print('SOCKET ', s)
 s.send(bytes('cs3700fall2020 HELLO {}\n'.format(NUID)))
 
 bits = 1024
@@ -65,5 +60,5 @@ while finding:
         finding = False
         flag = data_pieces[2]
 
-print('FLAG ', flag)
+print(flag)
 s.close()
