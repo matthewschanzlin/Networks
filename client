@@ -3,12 +3,14 @@ import socket
 import sys
 import ssl
 
+# Variables
 PORT = 27993
 HOSTNAME = ''
 NUID = 0
 args = sys.argv
 use_ssl = False
 
+# Arg logic
 need_hostname = True
 check_port = False
 for i in range(1, len(args)):
@@ -26,26 +28,35 @@ for i in range(1, len(args)):
     else:
         NUID = arg
 
+if use_ssl and PORT == 27993:
+  PORT = 27994
+
+# Make the socket; make the socket an ssl socket if necessary
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((HOSTNAME, PORT))
 if use_ssl:
     context = ssl.SSLContext(ssl.PROTOCOL_TLS)
     s = context.wrap_socket(s, server_side=False, server_hostname=HOSTNAME)
+
+# Send the HELLO message through the socket
 s.send(bytes('cs3700fall2020 HELLO {}\n'.format(NUID)))
 
+# Helper variables
 bits = 1024
 finding = True
 flag = ''
 count = 0
 
+# FIND message problem solving loop
 while finding:
     more_data = True
     data = ''
+
+    # Continue recv until a \n character comes
     while more_data:
         this_data = s.recv(bits)
         data += this_data
-        if '\n' in this_data:
-            more_data = False
+        more_data = '\n' not in this_data
 
     data_pieces = data.split(' ')
     message = data_pieces[1]
@@ -61,5 +72,6 @@ while finding:
         finding = False
         flag = data_pieces[2]
 
+# Flag
 print(flag)
 s.close()
