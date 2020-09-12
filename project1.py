@@ -32,7 +32,7 @@ print('NUID ', NUID)
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((HOSTNAME, PORT))
 s.send('cs3700fall2020 HELLO 001699953\n')
-bits = 4096
+bits = 1024
 finding = True
 flag = ''
 count = 0
