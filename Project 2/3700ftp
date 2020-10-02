@@ -2,6 +2,9 @@
 import socket
 import sys
 import ssl
+import os
+
+# ./3700ftp mkdir ftp://3700.network
 
 # Variables
 USER = 'schanzlinma'
@@ -93,6 +96,8 @@ class FTPClient():
 
     def delete(self, is_file, path):
         delete_message = ''
+
+        print('PATH ', path)
         del_path = path.split('3700.network')[1]
         if is_file:
             delete_message = self.format_message('DELE', del_path)
@@ -104,25 +109,39 @@ class FTPClient():
     def is_ftp_url(self, path):
         return 'ftp://' in path
 
-    def download_file(self, remote, local):
+    def download_file(self, remote, local, delete_after_copy):
         self.connect_data_socket()
-        download_message = self.format_message('RETR', remote)
+        download_message = self.format_message('RETR', remote.split('3700.network/')[-1])
         self.control_socket.send(download_message)
         self.receive()
 
-        # TODO: RECV all available bytes on data SOCKET
-        # Create file/store bytes in on new local file at path 'local'
-        # self.receive()
+        f = open(local, 'wb')
+        data = self.data_socket.recv(1024)
+        while data:
+            f.write(data)
+            data = self.data_socket.recv(1024)
+        f.close()
+
+        if delete_after_copy:
+            self.delete(True, remote)
+
         self.data_socket.close()
 
-    def upload_file(self, remote, local):
+    def upload_file(self, remote, local, delete_after_copy):
         self.connect_data_socket()
         upload_message = self.format_message('STOR', local)
         self.control_socket.send(upload_message)
         self.receive()
 
-        # TODO: Link to/Create instance of local file bytes in code
-        # SEND bytes through data socket
+        f = open(local, 'rb')
+        data = f.read(1024)
+        while (data):
+            self.data_socket.send(data)
+            data = f.read(1024)
+
+        if delete_after_copy:
+            os.remove(local)
+
         self.data_socket.close()
 
 if __name__ == '__main__':
@@ -147,15 +166,16 @@ if __name__ == '__main__':
         if command == 'LS':
             ftp_client.list(arg1)
         elif command == 'RM':
-            ftp_client.delete(True, arg2)
+            ftp_client.delete(True, arg1)
         elif command == 'RMDIR':
             ftp_client.delete(False, arg1)
         elif command == 'MKDIR':
             ftp_client.make_dir(arg1)
-        elif command == 'CP':
+        elif command == 'CP' or command == 'MV':
+            move = command == 'MV'
             if ftp_client.is_ftp_url(arg1):
-                ftp_client.download_file(arg1, arg2)
+                ftp_client.download_file(arg1, arg2, move)
             else:
-                ftp_client.upload_file(arg2, arg1)
+                ftp_client.upload_file(arg2, arg1, move)
 
         ftp_client.quit()
