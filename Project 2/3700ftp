@@ -1,0 +1,161 @@
+#!/usr/bin/env python3
+import socket
+import sys
+import ssl
+
+# Variables
+USER = 'schanzlinma'
+PASS = 'EyCJUj2riohmMaGsTKwp'
+DOMAIN = '3700.network'
+HOSTNAME = DOMAIN
+PORT = 21
+args = sys.argv
+
+command = ''
+arg1 = ''
+arg2 = ''
+
+class FTPClient():
+    def __init__(self):
+        self.user = 'schanzlinma'
+        self.password = 'EyCJUj2riohmMaGsTKwp'
+        self.domain = '3700.network'
+        self.port = 21
+        self.packet_size = 8192
+        self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.data_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    def format_message(self, command, arg):
+        message = '{} {}\r\n'.format(command, arg).encode()
+        return message
+
+    def receive(self):
+        response = self.control_socket.recv(self.packet_size).decode()
+        print(response)
+
+    def connect_control_channel(self):
+        self.control_socket.connect((self.domain, self.port))
+        self.receive()
+
+    def login(self):
+        username_message = self.format_message('USER', self.user)
+        password_message = self.format_message('PASS', self.password)
+        self.control_socket.send(username_message)
+        self.receive()
+        self.control_socket.send(password_message)
+        self.receive()
+
+    def set_type(self):
+        type_message = self.format_message('TYPE', 'I')
+        self.control_socket.send(type_message)
+        self.receive()
+
+    def set_mode(self):
+        stream_message = self.format_message('MODE', 'S')
+        file_oriented_message = self.format_message('STRU', 'F')
+        self.control_socket.send(stream_message)
+        self.receive()
+        self.control_socket.send(file_oriented_message)
+        self.receive()
+
+    def connect_data_socket(self):
+        open_data_message = self.format_message('PASV', '')
+        self.control_socket.send(open_data_message)
+        response = self.control_socket.recv(self.packet_size).decode()
+
+        data_channel = response.split('(')[1].split(')')[0].replace(',', '.')
+        data_pieces = data_channel.split('.')
+        port = (int(data_pieces[4]) << 8) + int(data_pieces[5])
+        ip = '.'.join(data_pieces[0:4])
+        self.data_socket.connect((ip, port))
+
+    def quit(self):
+        quit_message = self.format_message('QUIT', '')
+        self.control_socket.send(quit_message)
+        self.receive()
+        self.control_socket.close()
+
+    def list(self, path):
+        self.connect_data_socket()
+        ls_path = path.split('3700.network')[1]
+        list_message = self.format_message('LIST', ls_path)
+        self.control_socket.send(list_message)
+        self.receive()
+        response = self.data_socket.recv(self.packet_size).decode()
+        self.receive()
+        print(response)
+
+    def make_dir(self, path):
+        dir_path = path.split('3700.network')[1]
+        make_dir_message = self.format_message('MKD', dir_path)
+        self.control_socket.send(make_dir_message)
+        self.receive()
+
+    def delete(self, is_file, path):
+        delete_message = ''
+        del_path = path.split('3700.network')[1]
+        if is_file:
+            delete_message = self.format_message('DELE', del_path)
+        else:
+            delete_message = self.format_message('RMD', del_path)
+        self.control_socket.send(delete_message)
+        self.receive()
+
+    def is_ftp_url(self, path):
+        return 'ftp://' in path
+
+    def download_file(self, remote, local):
+        self.connect_data_socket()
+        download_message = self.format_message('RETR', remote)
+        self.control_socket.send(download_message)
+        self.receive()
+
+        # TODO: RECV all available bytes on data SOCKET
+        # Create file/store bytes in on new local file at path 'local'
+        # self.receive()
+        self.data_socket.close()
+
+    def upload_file(self, remote, local):
+        self.connect_data_socket()
+        upload_message = self.format_message('STOR', local)
+        self.control_socket.send(upload_message)
+        self.receive()
+
+        # TODO: Link to/Create instance of local file bytes in code
+        # SEND bytes through data socket
+        self.data_socket.close()
+
+if __name__ == '__main__':
+    # Arg logic
+    if len(args) < 3 or len(args) > 4:
+        print('EXAMPLE USAGE: \n $ ./3700ftp <command> <args1 <args2>>')
+    else:
+        for i in range(1, len(args)):
+            if i == 1:
+                command = args[i].upper()
+            elif i == 2:
+                arg1 = args[i]
+            elif i == 3:
+                arg2 = args[i]
+
+        ftp_client = FTPClient()
+        ftp_client.connect_control_channel()
+        ftp_client.login()
+        ftp_client.set_type()
+        ftp_client.set_mode()
+
+        if command == 'LS':
+            ftp_client.list(arg1)
+        elif command == 'RM':
+            ftp_client.delete(True, arg2)
+        elif command == 'RMDIR':
+            ftp_client.delete(False, arg1)
+        elif command == 'MKDIR':
+            ftp_client.make_dir(arg1)
+        elif command == 'CP':
+            if ftp_client.is_ftp_url(arg1):
+                ftp_client.download_file(arg1, arg2)
+            else:
+                ftp_client.upload_file(arg2, arg1)
+
+        ftp_client.quit()
