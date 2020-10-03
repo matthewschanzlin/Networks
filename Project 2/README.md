@@ -1,0 +1,3 @@
+My high level approach was fairly straight forward: I got all of the "scaffolding" in place. This involved setting up all command line logic and empty functions for each ftp operation. I then connected the necessary sockets and tried the non data channel operations. Once I got these working I cleaned up the code and put the right pieces in their corresponding methods. Then I played around with the data channel and got the data transfer operations working. Again, I moved my code into the functions I wrote earlier and cleaned everything up.
+
+For testing, I just cycled through all the methods a bunch of times and manually verified they worked. Fortunately I didn't run into too many issues.

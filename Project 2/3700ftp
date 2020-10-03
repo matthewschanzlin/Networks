@@ -19,11 +19,11 @@ arg1 = ''
 arg2 = ''
 
 class FTPClient():
-    def __init__(self, username, password, domain):
+    def __init__(self, username, password, domain, port):
         self.user = username
         self.password = password
         self.domain = domain
-        self.port = 21
+        self.port = port
         self.packet_size = 8192
         self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.data_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -146,10 +146,11 @@ if __name__ == '__main__':
     if len(args) < 3 or len(args) > 4:
         print('EXAMPLE USAGE: \n $ ./3700ftp <command> <args1 <args2>>')
     else:
-        username = ''
+        username = 'anonymous'
         password = ''
         host = ''
         path = ''
+        port = 21
         for i in range(1, len(args)):
             if i == 1:
                 command = args[i].upper()
@@ -161,17 +162,41 @@ if __name__ == '__main__':
         pieces = None
         arg1
         if 'ftp://' in arg1:
-            pieces = arg1.replace('ftp://', '').split('@')
+            host = arg1.replace('ftp://', '')
+            if '/' in host:
+                host = host.split('/')[0]
+                path = host.replace(host, '')
+            else:
+                path = '/'
+            if '@' in arg1:
+                pieces = arg1.replace('ftp://', '').split('@')
+                username = pieces[0]
+                hostpath = pieces[1]
+                host = hostpath.split('/')[0]
+                path = hostpath.replace(host, '')
+            if ':' in username:
+                password = username.split(':')[1]
+                username = username.split(':')[0]
         elif 'ftp://' in arg2:
-            pieces = arg2.replace('ftp://', '').split('@')
+            host = arg1.replace('ftp://', '')
+            if '/' in host:
+                host = host.split('/')[0]
+                path = host.replace(host, '')
+            else:
+                path = '/'
+            if '@' in arg2:
+                pieces = arg2.replace('ftp://', '').split('@')
+                username = pieces[0]
+                hostpath = pieces[1]
+                host = hostpath.split('/')[0]
+                path = hostpath.replace(host, '')
+            if ':' in username:
+                password = username.split(':')[1]
+                username = username.split(':')[0]
 
-        userpass = pieces[0]
-        hostpath = pieces[1]
-        username = userpass.split(':')[0]
-        password = userpass.split(':')[1]
-        host = hostpath.split('/')[0]
-        path = hostpath.replace(host, '')
-        print('Stuff ', username, password, host, path)
+        if ':' in host:
+            port = int(host.split(':')[1])
+            host = host.split(':')[0]
 
         ftp_url = False
         if 'ftp://' in arg1:
@@ -180,7 +205,7 @@ if __name__ == '__main__':
         elif 'ftp://' in arg2:
             arg2 = path
 
-        ftp_client = FTPClient(username, password, host)
+        ftp_client = FTPClient(username, password, host, port)
         ftp_client.connect_control_channel()
         ftp_client.login()
         ftp_client.set_type()
