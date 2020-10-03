@@ -19,10 +19,10 @@ arg1 = ''
 arg2 = ''
 
 class FTPClient():
-    def __init__(self):
-        self.user = 'schanzlinma'
-        self.password = 'EyCJUj2riohmMaGsTKwp'
-        self.domain = '3700.network'
+    def __init__(self, username, password, domain):
+        self.user = username
+        self.password = password
+        self.domain = domain
         self.port = 21
         self.packet_size = 8192
         self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -80,8 +80,7 @@ class FTPClient():
 
     def list(self, path):
         self.connect_data_socket()
-        ls_path = path.split('3700.network')[1]
-        list_message = self.format_message('LIST', ls_path)
+        list_message = self.format_message('LIST', path)
         self.control_socket.send(list_message)
         self.receive()
         response = self.data_socket.recv(self.packet_size).decode()
@@ -89,16 +88,14 @@ class FTPClient():
         print(response)
 
     def make_dir(self, path):
-        dir_path = path.split('3700.network')[1]
-        make_dir_message = self.format_message('MKD', dir_path)
+        make_dir_message = self.format_message('MKD', path)
         self.control_socket.send(make_dir_message)
         self.receive()
 
-    def delete(self, is_file, path):
+    def delete(self, is_file, del_path):
         delete_message = ''
 
         print('PATH ', path)
-        del_path = path.split('3700.network')[1]
         if is_file:
             delete_message = self.format_message('DELE', del_path)
         else:
@@ -111,7 +108,7 @@ class FTPClient():
 
     def download_file(self, remote, local, delete_after_copy):
         self.connect_data_socket()
-        download_message = self.format_message('RETR', remote.split('3700.network/')[-1])
+        download_message = self.format_message('RETR', remote)
         self.control_socket.send(download_message)
         self.receive()
 
@@ -129,7 +126,7 @@ class FTPClient():
 
     def upload_file(self, remote, local, delete_after_copy):
         self.connect_data_socket()
-        upload_message = self.format_message('STOR', local)
+        upload_message = self.format_message('STOR', remote)
         self.control_socket.send(upload_message)
         self.receive()
 
@@ -149,6 +146,10 @@ if __name__ == '__main__':
     if len(args) < 3 or len(args) > 4:
         print('EXAMPLE USAGE: \n $ ./3700ftp <command> <args1 <args2>>')
     else:
+        username = ''
+        password = ''
+        host = ''
+        path = ''
         for i in range(1, len(args)):
             if i == 1:
                 command = args[i].upper()
@@ -157,7 +158,29 @@ if __name__ == '__main__':
             elif i == 3:
                 arg2 = args[i]
 
-        ftp_client = FTPClient()
+        pieces = None
+        arg1
+        if 'ftp://' in arg1:
+            pieces = arg1.replace('ftp://', '').split('@')
+        elif 'ftp://' in arg2:
+            pieces = arg2.replace('ftp://', '').split('@')
+
+        userpass = pieces[0]
+        hostpath = pieces[1]
+        username = userpass.split(':')[0]
+        password = userpass.split(':')[1]
+        host = hostpath.split('/')[0]
+        path = hostpath.replace(host, '')
+        print('Stuff ', username, password, host, path)
+
+        ftp_url = False
+        if 'ftp://' in arg1:
+            arg1 = path
+            ftp_url = True
+        elif 'ftp://' in arg2:
+            arg2 = path
+
+        ftp_client = FTPClient(username, password, host)
         ftp_client.connect_control_channel()
         ftp_client.login()
         ftp_client.set_type()
@@ -173,7 +196,7 @@ if __name__ == '__main__':
             ftp_client.make_dir(arg1)
         elif command == 'CP' or command == 'MV':
             move = command == 'MV'
-            if ftp_client.is_ftp_url(arg1):
+            if ftp_url:
                 ftp_client.download_file(arg1, arg2, move)
             else:
                 ftp_client.upload_file(arg2, arg1, move)
