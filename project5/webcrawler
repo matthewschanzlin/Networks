@@ -1,0 +1,153 @@
+#!/usr/bin/env python
+import sys
+import socket
+import requests
+import json
+
+HOST = 'www.3700.network'
+
+class WebCrawler:
+    def __init__(self, username, password):
+        self.cookie = None
+        self.current = None
+        self.password = password
+        self.referer = None
+        self.session = None
+        self.token = None
+        self.username = username
+        self.visited = {}
+        self.flags = []
+
+    def load_res(self, s):
+        res = s.recv(1024)
+        more = True
+        while more:
+            temp = s.recv(1024)
+            if len(temp) == 0:
+                more = False
+            res += temp
+
+        return res
+
+    def load_login_page(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((HOST, 80))
+        login_page_request = 'GET /accounts/login/?next=/fakebook/ HTTP/1.1\r\nHost: www.3700.network\r\nCookie:\r\n\r\n'
+        s.send(login_page_request)
+        res = self.load_res(s)
+        s.shutdown(1)
+        s.close()
+        self.current = res
+        self.build_cookie_from_response(res)
+
+    def build_cookie_from_response(self, res):
+        retrieve = lambda k: k + res.split(k)[1].split(';')[0]
+        self.token = retrieve('csrftoken=')
+        self.session = retrieve('sessionid=')
+        self.cookie = self.token + ';' + self.session
+
+    def login(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((HOST, 80))
+        postData = 'username=%s&password=%s&csrfmiddlewaretoken=%s&next=/fakebook/' % (self.username, self.password, self.token.split('=')[1])
+        message  = "POST /accounts/login/?next=/fakebook/ HTTP/1.1\r\nHost: www.3700.network\r\nConnection: close"
+        contentLength = "Content-Length: " + str(len(postData))
+        contentType = "Content-Type: application/x-www-form-urlencoded"
+        ref = 'Referer: http://www.3700.network/accounts/login/'
+        cookie = "Cookie: " + self.cookie
+        finalMessage = message + "\r\n" + contentLength + "\r\n" + contentType + "\r\n" + cookie + "\r\n" + ref + "\r\n\r\n" + postData + "\r\n\r\n"
+
+        s.send(finalMessage)
+
+        res = self.load_res(s)
+        s.shutdown(1)
+        s.close()
+        self.current = res
+        self.find_new_session_from_response(res)
+
+    def find_new_session_from_response(self, res):
+        retrieve = lambda k: k + res.split(k)[1].split(';')[0]
+        session = retrieve('sessionid=')
+        self.session = session
+        self.cookie = self.cookie.split('sessionid=')[0] + session
+
+    def find_flag(self, res):
+        if 'FLAG' in res:
+            flag = res.split('FLAG')[1].split('</h2>')[0]
+            print(res)
+            print('--------')
+            print(flag)
+
+            self.flags.append(flag)
+
+    def home(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((HOST, 80))
+        login_page_request = 'GET /fakebook/ HTTP/1.1\r\nHost: www.3700.network\r\nCookie:{}\r\n\r\n'.format(self.cookie)
+        s.send(login_page_request)
+        res = self.load_res(s)
+        s.shutdown(1)
+        s.close()
+        self.visited['/fakebook/'] = True
+        self.find_flag(res)
+        self.current = res
+
+    def go_link(self, link):
+        self.visited[link] = True
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((HOST, 80))
+        login_page_request = 'GET ' + link + ' HTTP/1.1\r\nHost: www.3700.network\r\nCookie:{}\r\n\r\n'.format(self.cookie)
+        s.send(login_page_request)
+        res = self.load_res(s)
+        s.shutdown(1)
+        s.close()
+        self.current = res
+
+    def get_links(self):
+        chopped = self.current.split('<a href="')
+        links = []
+        for chop in chopped:
+            link = chop.split('"')[0]
+            if link[:2] == '/f':
+                links.append(link)
+
+        return links
+
+    def crawl(self):
+
+        links = self.get_links()
+        unexplored = ['/fakebook/96421187/'] + links
+
+        while len(unexplored) > 0:
+            link = unexplored.pop(0)
+            if link not in self.visited:
+                print("NOT")
+                self.visited
+            print(len(self.visited.keys()), link)
+            self.go_link(link)
+            self.find_flag(self.current)
+            new_links = list(filter(lambda x: x not in unexplored and x not in self.visited, self.get_links()))
+            unexplored = new_links + unexplored
+
+
+
+
+
+if __name__ == '__main__':
+    username = sys.argv[1]
+    password = sys.argv[2]
+
+    webcrawler = WebCrawler(username, password)
+
+    webcrawler.load_login_page()
+    print(webcrawler.token)
+
+    #webcrawler.start()
+    #webcrawler.start1()
+
+    webcrawler.login()
+    webcrawler.home()
+
+    webcrawler.crawl()
+
+    print(webcrawler.cookie)
