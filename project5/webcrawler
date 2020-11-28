@@ -17,13 +17,9 @@ class WebCrawler:
         self.flags = []
 
     def load_res(self, s):
-        res = s.recv(1024)
+        res = s.recv(10000)
         more = True
-        while more:
-            temp = s.recv(1024)
-            if len(temp) == 0:
-                more = False
-            res += temp
+        i = 0
 
         return res
 
@@ -53,9 +49,9 @@ class WebCrawler:
         contentType = "Content-Type: application/x-www-form-urlencoded"
         ref = 'Referer: http://www.3700.network/accounts/login/'
         cookie = "Cookie: " + self.cookie
-        finalMessage = message + "\r\n" + contentLength + "\r\n" + contentType + "\r\n" + cookie + "\r\n" + ref + "\r\n\r\n" + postData + "\r\n\r\n"
+        send_message = message + "\r\n" + contentLength + "\r\n" + contentType + "\r\n" + cookie + "\r\n" + ref + "\r\n\r\n" + postData + "\r\n\r\n"
 
-        s.send(finalMessage)
+        s.send(send_message.encode('utf-8'))
 
         res = self.load_res(s)
         s.shutdown(1)
@@ -72,17 +68,15 @@ class WebCrawler:
     def find_flag(self, res):
         if 'FLAG' in res:
             flag = res.split('FLAG')[1].split('</h2>')[0]
-            print(res)
-            print('--------')
-            print(flag)
+            print(flag[2:])
 
-            self.flags.append(flag)
+            self.flags.append(flag[2:])
 
     def home(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((HOST, 80))
         login_page_request = 'GET /fakebook/ HTTP/1.1\r\nHost: www.3700.network\r\nCookie:{}\r\n\r\n'.format(self.cookie)
-        s.send(login_page_request)
+        s.send(login_page_request.encode('utf-8'))
         res = self.load_res(s)
         s.shutdown(1)
         s.close()
@@ -95,7 +89,9 @@ class WebCrawler:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((HOST, 80))
         login_page_request = 'GET ' + link + ' HTTP/1.1\r\nHost: www.3700.network\r\nCookie:{}\r\n\r\n'.format(self.cookie)
-        s.send(login_page_request)
+
+
+        s.send(login_page_request.encode('utf-8'))
         res = self.load_res(s)
         s.shutdown(1)
         s.close()
@@ -114,18 +110,16 @@ class WebCrawler:
     def crawl(self):
 
         links = self.get_links()
-        unexplored = ['/fakebook/96421187/'] + links
+        unexplored = links
 
-        while len(unexplored) > 0:
+        while len(unexplored) > 0 and len(self.flags) < 5:
             link = unexplored.pop(0)
             if link not in self.visited:
-                print("NOT")
                 self.visited
-            print(len(self.visited.keys()), link)
             self.go_link(link)
             self.find_flag(self.current)
             new_links = list(filter(lambda x: x not in unexplored and x not in self.visited, self.get_links()))
-            unexplored = new_links + unexplored
+            unexplored = unexplored + new_links
 
 
 
@@ -138,7 +132,6 @@ if __name__ == '__main__':
     webcrawler = WebCrawler(username, password)
 
     webcrawler.load_login_page()
-    print(webcrawler.token)
 
     #webcrawler.start()
     #webcrawler.start1()
@@ -147,5 +140,3 @@ if __name__ == '__main__':
     webcrawler.home()
 
     webcrawler.crawl()
-
-    print(webcrawler.cookie)
