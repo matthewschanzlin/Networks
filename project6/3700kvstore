@@ -1,6 +1,12 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
-import sys, socket, select, time, json, random
+
+######################TODO LIST############################
+#TODO Optimize
+
+
+from collections import OrderedDict
+import sys, socket, select, time, json
 
 # Your ID number
 my_id = sys.argv[1]
@@ -14,189 +20,525 @@ sock = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
 sock.connect(my_id)
 
 last = 0
-term = 0
-state = 'follower'
-global curr_leader
-curr_leader = 'FFFF'
-
-global curr_time
-curr_time = time.time()
-
-data = {}
-transaction_log = []
-
-voted = False
+store = {}
+replica_ids.append(my_id)
+messageLog = {}
+rollback_temp = None
+quorum_cutoff = .8
+heartbeat_cutoff = .6
+election_cutoff = .3
+reconcile_cutoff = .3
+COMMIT_IDX = 0
+ELECTION_RESULTS = {}
 
 
-timeout = (random.randint(150, 300))/1000
+def initial_election():
+    ranks = {x: int(x, 16) for x in replica_ids}
+    min_id = min(ranks.values())
 
-def make_candidate():
-	global term, votes, curr_time, state
-	votes = 1
-	term += 1
-	curr_time = time.time()
-	state = 'candidate'
+    for replica in ranks:
+        if ranks[replica] == min_id:
+            return replica
 
-def make_follower(leader_id):
-	global curr_time, state, curr_leader, voted
-	curr_time = time.time()
-	state = 'follower'
-	curr_leader = leader_id
-	voted = False
 
-def make_leader():
-	global curr_leader, state, curr_time, last
-	state = 'leader'
-	curr_leader = my_id
-	curr_time = time.time()
-	last = curr_time - .11
+LEADER_ID = initial_election()
+IS_LEADER = LEADER_ID == my_id
+LEADER_ALIVE = True
+
+is_election = False
+election_time = None
+
+reconcile_time = None
+
+REQUEST_STASH = OrderedDict()
+
+LEADER_REC = set()
+
+
+class MessageLogEntry:
+    def __init__(self, timestamp, message):
+        self.timestamp = timestamp
+        self.listOfRepAcks = set()
+        self.message = message
+        self.wasFromStash = False
+
+    def add_rep_ack(self, rep):
+        self.listOfRepAcks.add(rep)
+
+    def get_rep_ack_list(self):
+        return self.listOfRepAcks
+
+    def get_timestamp(self):
+        return self.timestamp
+
+    def get_message(self):
+        return self.message
+
+    def get_was_from_stash(self):
+        return self.wasFromStash
+
+    def set_was_from_stash(self, stash):
+        self.wasFromStash = stash
+
+
+def call_election():
+    global is_election, election_time
+
+    is_election = True
+    election_time = time.time()
+    to_all = {"src": my_id, "dst": "FFFF", "leader": LEADER_ID, "type": "election", "by_leader": IS_LEADER}
+    sock.send(json.dumps(to_all))
+
+
+def send_election_bid():
+    to_all = {"src": my_id, "dst": "FFFF", "leader": LEADER_ID, "type": "bid", "commitIdx": COMMIT_IDX}
+    sock.send(json.dumps(to_all))
+
+
+def send_heartbeat(dst):
+    if dst == my_id:
+        return
+    to_leader = {"src": my_id, "dst": dst, "leader": LEADER_ID, "type": "heartbeat"}
+    sock.send(json.dumps(to_leader))
+
+
+def send_redirect(msg, leader=LEADER_ID):
+    global LEADER_ID
+    # x1x1 print("REDIRECTING")
+    redirect_msg = {"src": msg['dst'], "dst": LEADER_ID, "leader": LEADER_ID, "type": "leader_redirect", "MID": msg['MID'], "target": msg["src"]}
+
+    # redirect_msg = {"src": msg['dst'], "dst": msg["src"], "leader": leader, "type": "redirect", "MID": msg['MID']}
+    sock.send(json.dumps(redirect_msg))
+
+
+def leader_send_redirect(msg):
+    if msg["type"] == "leader_redirect":
+        redirect_msg = {"src": msg['dst'], "dst": msg["target"], "leader": my_id, "type": "redirect", "MID": msg['MID']}
+    else:
+        redirect_msg = {"src": msg['dst'], "dst": msg["src"], "leader": my_id, "type": "redirect", "MID": msg['MID']}
+
+    sock.send(json.dumps(redirect_msg))
+
+
+def answer_get(msg):
+    if msg['key'] in store:
+        return_msg = {"src": LEADER_ID,
+                      "dst": msg['src'],
+                      "leader": msg['leader'],
+                      "type": "ok",
+                      "MID": msg['MID'],
+                      "value": store[msg['key']]}
+    else:
+        return_msg = {"src": msg['dst'],
+                      "dst": msg['src'],
+                      "leader": msg['leader'],
+                      "type": "fail",
+                      "MID": msg['MID'],
+                      "value": ""}
+    sock.send(json.dumps(return_msg))
+
+
+def answer_put(msg):
+    global COMMIT_IDX, rollback_temp, heartbeat
+
+    # if leader, broadcast to followers
+    if msg["dst"] == LEADER_ID:
+        msg["origin"] = msg["src"]
+        messageLog[msg["MID"]] = MessageLogEntry(time.time(), msg)
+        to_followers = {"src": LEADER_ID, 'dst': "FFFF", "leader": LEADER_ID, "type": "put", "MID": msg['MID'], "origin": msg["src"], 'key': msg['key'], 'value': msg['value']}
+        sock.send(json.dumps(to_followers))
+
+    # replica answer put
+    elif msg["src"] == LEADER_ID:
+
+        # store
+        if msg["key"] in store:
+            rollback_temp = store[msg["key"]]
+
+        COMMIT_IDX += 1
+        store[msg["key"]] = msg['value']
+        # If a put is received from the leader, send an ACK back to the leader
+        to_leader = {"src": my_id, 'dst': LEADER_ID, "leader": LEADER_ID, "type": "ok", "MID": msg['MID'], "origin": msg["origin"], 'key': msg['key'], 'value': msg['value']}
+        sock.send(json.dumps(to_leader))
+
+    # If we get a msg from someone claiming to be leader who is not who I believe to be leader, reconcile leaders
+    elif msg["src"] == msg["leader"] and msg["leader"] != LEADER_ID:
+        #print("reconciliation starting")
+        start_leader_reconciliation()
+        msg["origin"] = msg["src"]
+        # REQUEST_STASH.append(msg)
+        # to_client = {"src": LEADER_ID, "dst": msg["src"], "leader": LEADER_ID, "type": "fail", "MID": msg['MID']}
+        # sock.send(json.dumps(to_client))
+
+
+def start_leader_reconciliation():
+    global COMMIT_IDX, IS_LEADER, reconcile_time
+    reconcile_time = time.time()
+    to_all = {"src": my_id, 'dst': "FFFF", "commitIdx": COMMIT_IDX, "leader": LEADER_ID, "type": "reconcile"}
+    sock.send(json.dumps(to_all))
+
+
+def handle_reconcile(msg):
+    global reconcile_time, LEADER_REC
+    if reconcile_time is None:
+        reconcile_time = time.time()
+    LEADER_REC.add((msg["src"], msg["src"] == msg["leader"], msg["commitIdx"]))
+
+
+def quorum_timeout(start_time):
+    return time.time() - start_time >= quorum_cutoff
+
+
+def quorum(mid):
+    return len(mid) >= len(replica_ids) // 2
+
+
+def send_rollback(msg):
+    for src in messageLog[msg["MID"]].get_rep_ack_list():
+        rollback_msg = {"src": LEADER_ID, "dst": src, "leader": LEADER_ID, "type": "rollback", "MID": msg['MID'], "key": msg['key']}
+        sock.send(json.dumps(rollback_msg))
+
+    to_client = {"src": LEADER_ID, "dst": msg["src"], "leader": LEADER_ID, "type": "fail", "MID": msg['MID']}
+    sock.send(json.dumps(to_client))
+
+    messageLog.pop(msg["MID"])
+
+
+def answer_rollback(msg):
+    global COMMIT_IDX
+
+    COMMIT_IDX -= 1
+    # x1x1 print("rolling back")
+    if rollback_temp is not None:
+        store[msg["key"]] = rollback_temp
+    else:
+        store.pop(msg["key"])
+
+
+def quorum_reached(msg):
+    global COMMIT_IDX, messageLog
+
+    to_client = {"src": LEADER_ID, 'dst': msg["origin"], "leader": LEADER_ID, "type": "ok", "MID": msg['MID']}
+    sock.send(json.dumps(to_client))
+    messageLog.pop(msg["MID"])
+    # messageLog.pop(msg["MID"])
+    COMMIT_IDX += 1
+    store[msg["key"]] = msg['value']
+
+
+def receive_ack(msg):
+
+    if msg["MID"] in messageLog.keys():
+        messageLog[msg["MID"]].add_rep_ack(msg["src"])
+        if quorum(messageLog[msg['MID']].get_rep_ack_list()):
+            quorum_reached(msg)
+
+
+def handle_msg_to_leader(msg):
+
+    if msg['type'] == 'get':
+        answer_get(msg)
+
+    elif msg["type"] == 'put':
+        answer_put(msg)
+
+    elif msg["type"] == "ok":
+        receive_ack(msg)
+
+    elif msg["type"] == "heartbeat":
+        send_heartbeat(msg["src"])
+
+    elif msg["type"] == "leader_redirect":
+        leader_send_redirect(msg)
+
+    elif msg["type"] == "reconcile":
+        handle_reconcile(msg)
+
+    elif msg["type"] == "stash":
+        for req in msg["data"]:
+            message_from_stash = MessageLogEntry(time.time(), req)
+            message_from_stash.set_was_from_stash(True)
+            messageLog[req["MID"]] = message_from_stash
+
+
+def handle_msg_from_leader(msg):
+    global LEADER_ALIVE, heartbeat, is_election
+
+    if msg["type"] == 'put':
+        answer_put(msg)
+
+    elif msg["type"] == 'rollback':
+        answer_rollback(msg)
+
+    elif msg["type"] == "heartbeat":
+        LEADER_ALIVE = True
+        is_election = False
+
+    elif msg["type"] == "reconcile":
+        handle_reconcile(msg)
+
+    heartbeat = time.time()
+
+
+def handle_msg_from_rep(msg):
+    global LEADER_ID, is_election, election_time, heartbeat, LEADER_ALIVE, ELECTION_RESULTS, COMMIT_IDX, reconcile_time
+
+    if msg["type"] == "election":
+        if is_election:
+            heartbeat = None
+            return
+        if msg["by_leader"]:
+            if IS_LEADER:
+                send_election_bid()
+                is_election = True
+                election_time = time.time()
+        else:
+            # LEADER_ID = ""
+            send_election_bid()
+            is_election = True
+            election_time = time.time()
+
+    elif msg["type"] == "bid":
+        ELECTION_RESULTS[msg["src"]] = msg["commitIdx"]
+        ELECTION_RESULTS[my_id] = COMMIT_IDX
+
+    elif msg["type"] == "kill":
+        # Full reset
+        # x1x1 print("{} got kill from {}".format(my_id, msg["src"]))
+        LEADER_ID = msg["leader"]
+        is_election = False
+        LEADER_ALIVE = True
+        election_time = None
+        reconcile_time = None
+
+    elif msg["type"] == "reconcile":
+        handle_reconcile(msg)
+
+    heartbeat = None
+
+
+def handle_bid_or_kill_from_rep(msg):
+    global LEADER_ID, is_election, election_time, LEADER_ALIVE, heartbeat, ELECTION_RESULTS, COMMIT_IDX, reconcile_time
+
+    if msg["type"] == "bid":
+        ELECTION_RESULTS[msg["src"]] = msg["commitIdx"]
+        ELECTION_RESULTS[my_id] = COMMIT_IDX
+
+    elif msg["type"] == "kill":
+        # Full reset
+        # x1x1 print("{} got kill from {}".format(my_id, msg["src"]))
+
+        LEADER_ID = msg["leader"]
+        send_kill = {"src": my_id, 'dst': "FFFF", "leader": LEADER_ID, "type": "kill"}
+        sock.send(json.dumps(send_kill))
+        is_election = False
+        LEADER_ALIVE = True
+        election_time = None
+        reconcile_time = None
+
+    heartbeat = None
+
+
+def check_message_log():
+    # for each messageLogEntry object in the log
+    for v in messageLog.values():
+
+        if v.get_was_from_stash():
+            # x1x1 print("Message from Stash")
+            v.get_message()["dst"] = my_id
+            v.get_message()["leader"] = my_id
+            handle_msg_to_leader(v.get_message())
+            v.set_was_from_stash(False)
+
+            # check if timeout is reached
+        if time.time() - v.get_timestamp() >= quorum_cutoff:
+            # check for quorum, and if yes, set acked to True
+            if quorum(v.get_rep_ack_list()):
+                quorum_reached(v.get_message())
+
+            # if timeout reached and no quorum, send rollback
+            else:
+                send_rollback(v.get_message())
+
+
+def determine_election_result():
+    global LEADER_ALIVE, is_election, LEADER_ID, election_time, heartbeat
+
+    # Get winners list, and if there are multiple, the tiebreaker is highest ID
+    winners = {int(x, 16): x for x in ELECTION_RESULTS if ELECTION_RESULTS[x] == max(ELECTION_RESULTS.values())}
+    if len(winners) > 0:
+        LEADER_ID = winners[max(winners.keys())]
+
+        # If we end up as the LEADER, send the kill msg to end the election
+        if LEADER_ID == my_id:
+            send_kill = {"src": my_id, 'dst': "FFFF", "leader": my_id, "type": "kill"}
+            sock.send(json.dumps(send_kill))
+
+        is_election = False
+        LEADER_ALIVE = True
+        election_time = None
+
+
+def handle_stash():
+    pass
+    # global REQUEST_STASH, messageLog
+    #
+    # print("HANDLING STASH")
+    # for request in REQUEST_STASH.values():
+    #     #print(request)
+    #     #if request.getMessage()["dst"] == LEADER_ID:
+    #     handle_msg_to_leader(request.getMessage())
+    #     if time.time() - request.getTimestamp() >= quorum_cutoff:
+    #         # check for quorum, and if yes, set acked to True
+    #         if quorum(request.getListOfRepAck()):
+    #             quorum_reached(request.getMessage())
+    #
+    #         # if timeout reached and no quorum, send rollback
+    #         else:
+    #             send_rollback(request.getMessage())
+    #
+    #             REQUEST_STASH.pop(request.getMessage()["MID"])
+
+        # elif request["leader"] != LEADER_ID:
+        #     leader_send_redirect(request)
+
+
+def finalize_leader_rec():
+    global reconcile_time, LEADER_REC, LEADER_ID, REQUEST_STASH
+
+    opponents = filter(lambda x: x[1], LEADER_REC)
+    winner = None
+    for op in opponents:
+        if winner and op[2] > winner[2]:
+            winner = op
+
+        if not winner:
+            winner = op
+
+    if winner:
+        LEADER_ID = winner[0]
+
+        send_kill = {"src": my_id, 'dst': "FFFF", "leader": LEADER_ID, "type": "kill"}
+        sock.send(json.dumps(send_kill))
+        reconcile_time = None
+
+        if my_id != LEADER_ID:
+
+            while len(REQUEST_STASH) > 0:
+                stash = []
+                counter = 0
+                for request in REQUEST_STASH:
+                    if counter > 10:
+                        break
+                    stash.append(REQUEST_STASH[request].get_message())
+                    counter += 1
+
+                for r in stash:
+                    REQUEST_STASH.pop(r["MID"])
+                to_new_leader = {"src": my_id, 'dst': LEADER_ID, "leader": LEADER_ID, "type": "stash",
+                                     "data": stash}
+                sock.send(json.dumps(to_new_leader))
+
+    else:
+        reconcile_time = time.time()
+
+
+
+heartbeat = None
+
+#####################################################
+#                   Main Function                   #
+#####################################################
+
 
 while True:
-	ready = select.select([sock], [], [], 0.1)[0]
+    IS_LEADER = LEADER_ID == my_id
 
-	if sock in ready:
+    ready = select.select([sock], [], [], 0.1)[0]
 
-		if state == 'candidate':
-			#print("In candidate loop " + my_id + " cur " + curr_leader)
+    # print("{}: {}".format(my_id, is_election))
+    if sock in ready:
+        msg_raw = sock.recv(32768)
 
-			if (time.time() > curr_time + timeout):
-				make_candidate()
+        if len(msg_raw) == 0: continue
+        msg = json.loads(msg_raw)
 
+        if reconcile_time and time.time() - reconcile_time >= reconcile_cutoff:
+            # Hit the reconcile timeout
+            # opponents = filter(lambda x: x[1], LEADER_REC)
+            # print(LEADER_REC)
+            finalize_leader_rec()
+            if msg["src"] not in replica_ids:
+                 REQUEST_STASH[msg["MID"]] = MessageLogEntry(time.time(), msg)
+            continue
 
-			for r in replica_ids:
-				leader_msg = {
-					'src': my_id,
-					'dst': r,
-					'leader': my_id,
-					'type': 'vote',
-					'term': term
-				}
-				sock.send(bytes(json.dumps(leader_msg), 'ascii'))
+        elif reconcile_time and time.time() - reconcile_time < reconcile_cutoff:
 
-			msg_raw = sock.recv(32768)
+            if msg["type"] == "reconcile":
+                handle_reconcile(msg)
 
-			if len(msg_raw) == 0: continue
-			msg = json.loads(msg_raw)
+            elif msg["type"] == "kill":
+                handle_bid_or_kill_from_rep(msg)
+            elif msg["src"] not in replica_ids:
+                REQUEST_STASH[msg["MID"]] = MessageLogEntry(time.time(), msg)
+            continue
 
-			if msg['type'] == 'ok':
-				votes += 1
-				print(str(votes) + " for " + my_id)
-				if votes > len(replica_ids)/2:
-					print(my_id + " is now leader")
-					make_leader()
+        if IS_LEADER:
+            if not is_election:
+                handle_msg_to_leader(msg)
+                check_message_log()
+                if len(REQUEST_STASH) > 0:
+                    handle_stash()
 
+            else:
+                LEADER_ID = "FFFF"
+                send_election_bid()
+                is_election = True
+                election_time = time.time()
 
-			if msg['type'] == 'append':
-				if int(msg['term']) >= term:
-					make_follower(msg['src'])
+        # IS DEFINITELY REPLICA
+        else:
 
-			if msg['type'] in ['get', 'put']:
-				pass
+            if not is_election:
+                election_time = None
 
+                if msg["src"] in replica_ids and msg["src"] != LEADER_ID:
+                    handle_msg_from_rep(msg)
 
-		if state == 'follower':
-			print("In follower loop " + my_id + " cur " + curr_leader)
-			msg_raw = sock.recv(32768)
+                # Must be from leader
+                elif msg["src"] == LEADER_ID:
+                    handle_msg_from_leader(msg)
 
+                elif heartbeat and time.time() - heartbeat >= heartbeat_cutoff:
+                    if LEADER_ALIVE:
+                        send_heartbeat(LEADER_ID)
+                        LEADER_ALIVE = False
+                        heartbeat = time.time()
 
-			if len(msg_raw) == 0: continue
-			msg = json.loads(msg_raw)
+                    else:
+                        # x1x1 print("THIS IS A HEARTBEAT TIMEOUT for {}".format(my_id))
+                        is_election = True
+                        call_election()
+                        send_election_bid()
+                        heartbeat = None
 
-			if time.time() > curr_time + timeout:
-				make_candidate()
+                elif msg["src"] not in replica_ids:
+                    send_redirect(msg)
 
-			if msg['type'] in ['get', 'put']:
-				if msg['type'] == 'get':
-					print(msg)
-					response = {
-						'src': my_id,
-						'dst': msg['src'],
-						'leader': curr_leader,
-						'type': 'redirect',
-						'MID': msg['MID']
-					}
-					sock.send(bytes(json.dumps(response), 'ascii'))
-				elif msg['type'] == 'put':
-					print(msg)
-					response = {
-						'src': my_id,
-						'dst': msg['src'],
-						'leader': curr_leader,
-						'type': 'redirect',
-						'MID': msg['MID']
-					}
-					sock.send(bytes(json.dumps(response), 'ascii'))
-			elif msg['type'] == 'append':
-				if int(msg['term']) >= term:
-					curr_time = time.time()
-					curr_leader = msg['leader']
-					term = int(msg['term'])
-					voted = False
-			elif msg['type'] == 'vote' and int(msg['term']) >= term and not voted:
-				curr_leader = 'FFFF'
-				response = {
-					'src': my_id,
-					'dst': msg['src'],
-					'leader': curr_leader,
-					'type': 'ok',
-				}
-				sock.send(bytes(json.dumps(response), 'ascii'))
-				voted = True
-				print("voted")
+                else:
+                    # print(msg)
+                    pass
 
+            else:
+                heartbeat = None
+                if msg["src"] in replica_ids:
+                    handle_bid_or_kill_from_rep(msg)
+                    # TODO: add function to confirm kill auth
 
+                else:
+                    msg["origin"] = msg["src"]
+                    REQUEST_STASH[msg["MID"]] = MessageLogEntry(time.time(), msg)
 
-		if state == 'leader':
-			#print("In leader statement " + my_id + " cur " + curr_leader)
-			curr_time = time.time()
-			if curr_time - last > .1:
-				for r in replica_ids:
-					print("Sending heartbeat " + my_id)
-					msg = {
-						'src': my_id,
-						'dst': r,
-						'leader': my_id,
-						'type': 'append',
-						'term': term
-					}
-					sock.send(bytes(json.dumps(response), 'ascii'))
-					last = curr_time
-
-			msg_raw = sock.recv(32768)
-
-			if len(msg_raw) == 0: continue
-			msg = json.loads(msg_raw)
-
-			if msg['type'] == 'append':
-				if int(msg['term']) > term:
-					#print("change of leader " + my_id + " " + msg['src'])
-					curr_leader = msg['src']
-					state = 'follower'
-			elif msg['type'] == 'get':
-				print(msg)
-				if msg['key'] in data:
-					response = {
-						'src': my_id,
-						'dst': msg['src'],
-						'leader': my_id,
-						'type': 'ok',
-						'MID': msg['MID'],
-						'value': data[msg['key']]
-					}
-					sock.send(bytes(json.dumps(response), 'ascii'))
-					last = time.time()
-			elif msg['type'] == 'put':
-				print(msg)
-				data[msg['key']] = msg['value']
-				mapping = (msg['key'], msg['value'])
-				temp_dict = {term: mapping}
-				transaction_log.append(temp_dict)
-				response = {
-						'src': my_id,
-						'dst': msg['src'],
-						'leader': my_id,
-						'type': 'ok',
-						'MID': msg['MID'],
-					}
-				sock.send(bytes(json.dumps(response), 'ascii'))
-				last = time.time()
+                if election_time and time.time() - election_time >= election_cutoff:
+                    determine_election_result()
+                    heartbeat = None
