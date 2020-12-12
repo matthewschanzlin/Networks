@@ -57,7 +57,7 @@ while True:
 	if sock in ready:
 
 		if state == 'candidate':
-			print("In candidate loop " + my_id + " cur " + curr_leader)
+			#print("In candidate loop " + my_id + " cur " + curr_leader)
 
 			if (time.time() > curr_time + timeout):
 				make_candidate()
@@ -147,7 +147,7 @@ while True:
 
 
 		if state == 'leader':
-			print("In leader statement " + my_id + " cur " + curr_leader)
+			#print("In leader statement " + my_id + " cur " + curr_leader)
 			curr_time = time.time()
 			if curr_time - last > .1:
 				for r in replica_ids:
@@ -169,7 +169,7 @@ while True:
 
 			if msg['type'] == 'append':
 				if int(msg['term']) > term:
-					print("change of leader " + my_id + " " + msg['src'])
+					#print("change of leader " + my_id + " " + msg['src'])
 					curr_leader = msg['src']
 					state = 'follower'
 			elif msg['type'] == 'get':
