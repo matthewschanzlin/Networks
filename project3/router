@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-""" Skeleton Implementation of Project 2 for NEU CS3700 """
+""" Skeleton Implementation of Project 2 for NEU CS3700"""
 
 import argparse
 import json
