@@ -66,20 +66,6 @@ class Router:
       self.sockets[network].connect(network)
       self.relations[network] = relation
 
-
-  def get_route(self, srcif, daddr):
-    peer = None
-    routes = self.lookup_routes(daddr)
-    if routes:
-      routes = self.get_highest_preference(routes)
-      routes = self.get_self_origin(routes)
-      routes = self.get_shortest_as_path(routes)
-      routes = self.get_origin_routes(routes)
-      routes = self.filter_relationships(srcif, routes)
-    return self.sockets[peer] if peer else None
-
-
-
   def forward(self, srcif, packet):
     ports = self.allPossible(packet["dst"])
     ports = self.filterRelationships(ports, srcif)
