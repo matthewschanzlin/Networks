@@ -67,68 +67,14 @@ class Router:
       self.relations[network] = relation
 
   def forward(self, srcif, packet):
-    ports = self.allPossible(packet["dst"])
-    ports = self.filterRelationships(ports, srcif)
-    sock = self.getLongestPrefix(ports)
+    ports = RouterUtils.allPossible(packet["dst"], self.routes)
+    ports = RouterUtils.filterRelationships(ports, srcif, self.relations)
+    sock = RouterUtils.getLongestPrefix(ports, self.sockets)
     if sock == None:
-      self.sendNoRoute(srcif, packet)
+      RouterUtils.sendNoRoute(srcif, packet, self.sockets)
     else:
-      self.forwardData(sock, packet)
-
+      RouterUtils.forwardData(sock, packet)
     return False
-
-  def forwardData(self, sock, packet):
-    packetJSON = json.dumps(packet)
-    packetJSON = packetJSON.encode("ASCII")
-    sock.send(packetJSON)
-    return True
-
-  def sendNoRoute(self, srcif, packet):
-    srcifSplit = srcif.split(".")
-    srcifSplit[-1] = "1"
-    srcUs = ".".join(srcifSplit)
-    noRouteMessage = {"src": srcUs, "dst": packet["src"], "type": "no route", "msg": {}}
-    packetJSON = json.dumps(noRouteMessage)
-    packetJSON = packetJSON.encode("ASCII")
-    self.sockets[srcif].send(packetJSON)
-
-    return False
-
-  def getLongestPrefix(self, ports):
-    sock = None
-    longestPref = 0
-    longestNetwork = ""
-    for key in ports:
-      pref = int(key.split("/")[1])
-
-      if pref > longestPref:
-        longestPref = pref
-        longestNetwork = key
-    if longestPref == 0:
-      return None
-    sock = self.sockets[ports[longestNetwork]]
-    return sock
-
-  def filterRelationships(self, ports, srcif):
-    keysToRemove = []
-    if self.relations[srcif] != CUST:
-      for key in ports:
-        if self.relations[ports[key]] != CUST:
-          keysToRemove.append(key)
-
-    for key in keysToRemove:
-      del ports[key]
-
-    return ports
-
-  def allPossible(self, dstAddress):
-    ports = {}
-
-    for key in self.routes:
-      if ipaddress.ip_address(dstAddress) in ipaddress.ip_network(key):
-        ports[key] = self.routes.get(key)
-
-    return ports
 
   def coalesce(self):
     while(True):
