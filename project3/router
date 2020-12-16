@@ -9,6 +9,8 @@ import socket
 import ipaddress
 from ipaddress import IPv4Network
 
+from routerUtils import RouterUtils
+
 
 ##########################################################################################
 
@@ -296,12 +298,12 @@ class Router:
     if (self.relations[ogSrc] == CUST):
       for key in self.sockets:
         if key != srcif:
-          self.sendPacketHelper(newPacket, key)
+          RouterUtils.sendPacketHelper(newPacket, key, self.sockets)
 
     else:
       for key in self.relations:
         if (self.relations[key] == CUST) and (key != srcif):
-          self.sendPacketHelper(newPacket, key)
+          RouterUtils.sendPacketHelper(newPacket, key, self.sockets)
 
     del packet["msg"]["ASPath"][-1]
 
@@ -414,24 +416,11 @@ class Router:
     if (self.relations[ogSrc] == CUST):
       for key in self.sockets:
         if key != srcif:
-          self.sendPacketHelper(newPacket, key)
+          RouterUtils.sendPacketHelper(newPacket, key, self.sockets)
     else:
       for key in self.relations:
         if (self.relations[key] == CUST) and (key != srcif):
-          self.sendPacketHelper(newPacket, key)
-
-  def sendPacketHelper(self, newPacket, key):
-    newPacket["dst"] = key
-    keyTemp = key.split(".")
-    keyTemp[-1] = "1"
-    keyTemp = ".".join(keyTemp)
-    newPacket["src"] = keyTemp
-    packetJSON = json.dumps(newPacket)
-    packetJSON = packetJSON.encode("ASCII")
-    self.sockets[key].send(packetJSON)
-
-    return True
-
+          RouterUtils.sendPacketHelper(newPacket, key, self.sockets)
 
   def dump(self, packet, srcif):
     fowardTable = []
@@ -499,4 +488,5 @@ if __name__ == "__main__":
   PARSER.add_argument('asn', metavar="asn", type=int, nargs=1, help="asn")
   PARSER.add_argument('networks', metavar='networks', type=str, nargs='+', help="networks")
   ARGS = PARSER.parse_args()
-  Router(ARGS.asn, ARGS.networks).run()
+  router = Router(ARGS.asn, ARGS.networks)
+  router.run()
