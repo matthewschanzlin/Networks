@@ -9,7 +9,7 @@ import socket
 import ipaddress
 from ipaddress import IPv4Network
 
-from project3.routerUtils import RouterUtils
+from routerUtils import RouterUtils
 
 
 ##########################################################################################

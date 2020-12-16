@@ -1,6 +1,7 @@
+import json
 
 class RouterUtils:
-    def sendPacketHelper(self, newPacket, key, sockets):
+    def sendPacketHelper(newPacket, key, sockets):
         newPacket["dst"] = key
         keyTemp = key.split(".")
         keyTemp[-1] = "1"
