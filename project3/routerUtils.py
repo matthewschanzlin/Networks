@@ -128,7 +128,7 @@ class RouterUtils:
               newMsg = updates1[i]
               newMsg['msg']['network'] = newIp
               newMsg['msg']['netmask'] = newNetmask
-              self.placeUpdateInOrder(newKey, newMsg)
+              RouterUtils.placeUpdateInOrder(newKey, newMsg, routes, routesAndUpdates)
               updates1.pop(i)
               updates2.pop(j)
               routesAndUpdates[key1] = updates1
@@ -149,3 +149,22 @@ class RouterUtils:
 
               return True
         return False
+
+
+    def placeUpdateInOrder(networkAddress, packet, routes, routesAndUpdates):
+        newPacket = {"type": "update", "src": packet["src"], "dst": packet["dst"],
+                     "msg": {"network": packet["msg"]["network"], "netmask": packet["msg"]["netmask"],
+                             "localpref": packet["msg"]["localpref"], "ASPath": packet["msg"]["ASPath"],
+                             "origin": packet["msg"]["origin"], "selfOrigin": packet["msg"]["selfOrigin"]}}
+        if routesAndUpdates.get(networkAddress) == None:
+          routesAndUpdates[networkAddress] = [newPacket]
+          return True
+
+        for i in range(len(routesAndUpdates[networkAddress])):
+          if self.isBestPath(newPacket, routesAndUpdates[networkAddress][i]):
+            routesAndUpdates[networkAddress].insert(i, newPacket)
+            return True
+
+        routesAndUpdates[networkAddress].append(newPacket)
+
+        return True
