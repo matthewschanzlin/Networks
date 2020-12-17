@@ -91,7 +91,7 @@ class Router:
       routes[networkAddress] = packet["src"]
     elif (RouterUtils.isBestPath(packet, routesAndUpdates[networkAddress][0])):
       routes[networkAddress] = packet["src"]
-    self.placeUpdateInOrder(networkAddress, packet)
+    RouterUtils.placeUpdateInOrder(networkAddress, packet, self.routes, self.routesAndUpdates)
     self.coalesce()
 
     return False
@@ -109,24 +109,10 @@ class Router:
     elif (RouterUtils.isBestPath(packet, self.routesAndUpdates[networkAddress][0])):
       self.routes[networkAddress] = packet["src"]
     RouterUtils.placeUpdateInOrder(networkAddress, packet, self.routes, self.routesAndUpdates)
-    self.forwardUpdate(srcif, packet)
+    RouterUtils.forwardUpdate(srcif, packet, self.asn, self.relations, self.sockets)
     self.coalesce()
 
     return False
-
-  def forwardUpdate(self, srcif, packet):
-    newPacket = {"type": "update", "src": None, "dst": None, "msg": packet["msg"]}
-    newPacket["msg"]["ASPath"].append(self.asn)
-    ogSrc = packet["src"]
-    if (self.relations[ogSrc] == CUST):
-      for key in self.sockets:
-        if key != srcif:
-          RouterUtils.sendPacketHelper(newPacket, key, self.sockets)
-
-    else:
-      for key in self.relations:
-        if (self.relations[key] == CUST) and (key != srcif):
-          RouterUtils.sendPacketHelper(newPacket, key, self.sockets)
 
     del packet["msg"]["ASPath"][-1]
 

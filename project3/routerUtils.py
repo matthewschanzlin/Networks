@@ -218,3 +218,17 @@ class RouterUtils:
         maskVal += maskConvTable[maskArr[i]]
 
         return address + "/" + str(maskVal)
+
+    def forwardUpdate(srcif, packet, asn, relations, sockets):
+        newPacket = {"type": "update", "src": None, "dst": None, "msg": packet["msg"]}
+        newPacket["msg"]["ASPath"].append(asn)
+        ogSrc = packet["src"]
+        if (relations[ogSrc] == CUST):
+          for key in sockets:
+            if key != srcif:
+              RouterUtils.sendPacketHelper(newPacket, key, sockets)
+
+        else:
+          for key in relations:
+            if (relations[key] == CUST) and (key != srcif):
+              RouterUtils.sendPacketHelper(newPacket, key, sockets)
