@@ -103,7 +103,7 @@ class Router:
 
         del packet["msg"]["ASPath"][-1]
 
-    def revokeV2(self, packet, srcif):
+    def revoke(self, packet, srcif):
         self.routes = {}
         self.routesAndUpdates = {}
 
@@ -166,7 +166,7 @@ class Router:
             return True
 
         if (msgType == 'revoke'):
-            self.revokeV2(packet, srcif)
+            self.revoke(packet, srcif)
             return True
 
         return False
