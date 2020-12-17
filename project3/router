@@ -108,7 +108,7 @@ class Router:
       self.routes[networkAddress] = packet["src"]
     elif (self.isBestPath(packet, self.routesAndUpdates[networkAddress][0])):
       self.routes[networkAddress] = packet["src"]
-    self.placeUpdateInOrder(networkAddress, packet)
+    RouterUtils.placeUpdateInOrder(networkAddress, packet, self.routes, self.routesAndUpdates)
     self.forwardUpdate(srcif, packet)
     self.coalesce()
 
