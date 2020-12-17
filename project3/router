@@ -211,9 +211,9 @@ class Router:
           return
 
 if __name__ == "__main__":
-  PARSER = argparse.ArgumentParser(description='route packets')
-  PARSER.add_argument('asn', metavar="asn", type=int, nargs=1, help="asn")
-  PARSER.add_argument('networks', metavar='networks', type=str, nargs='+', help="networks")
-  ARGS = PARSER.parse_args()
-  router = Router(ARGS.asn, ARGS.networks)
+  parser = argparse.ArgumentParser(description='route packets')
+  parser.add_argument('asn', type=int, help="AS Number")
+  parser.add_argument('networks', metavar='networks', type=str, nargs='+', help="networks")
+  args = parser.parse_args()
+  router = Router(args.asn, args.networks)
   router.run()
