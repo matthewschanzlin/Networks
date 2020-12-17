@@ -213,9 +213,9 @@ class RouterUtils:
         maskVal = 0
         maskArr = mask.split(".")
         for i in range(len(maskArr)):
-        if (maskConvTable.get(maskArr[i]) == None):
-         raise KeyError
-        maskVal += maskConvTable[maskArr[i]]
+            if (maskConvTable.get(maskArr[i]) == None):
+                raise KeyError
+            maskVal += maskConvTable[maskArr[i]]
 
         return address + "/" + str(maskVal)
 
