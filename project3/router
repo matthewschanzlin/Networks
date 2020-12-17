@@ -136,18 +136,6 @@ class Router:
         RouterUtils.forwardRevoke(srcif, packet, self.relations, self.sockets)
         return True
 
-    def revoke(self, packet, srcif):
-        if (self.revokes.get(srcif) == None):
-            self.revokes[srcif] = [packet]
-        else:
-            self.revokes[srcif].append(packet)
-
-        for i in range(len(packet["msg"])):
-            RouterUtils.removePath(packet["msg"][i], srcif, self.maskConvTable, self.routes, self.routesAndUpdates)
-
-        RouterUtils.forwardRevoke(srcif, packet, self.relations, self.sockets)
-        return True
-
     def dump(self, packet, srcif):
         fowardTable = []
         for key in self.routesAndUpdates:
