@@ -208,13 +208,12 @@ class RouterUtils:
         oldIP = ipaddress.IPv4Address(oldPacket['src'])
         return (newIP < oldIP)
 
-    def calculateNetAddress(address, mask, maskConvTable):
+    def calculateNetAddress(address, mask):
+        netmaskLength = lambda s: {'8': 0, '128': 1, '192': 2, '224': 3, '240': 4, '248': 5, '252': 6, '254': 7, '255': 8}
         maskVal = 0
         maskArr = mask.split(".")
         for i in range(len(maskArr)):
-            if (maskConvTable.get(maskArr[i]) == None):
-                raise KeyError
-            maskVal += maskConvTable[maskArr[i]]
+            maskVal += netmaskLength(maskArr[i])
 
         return address + "/" + str(maskVal)
 

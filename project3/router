@@ -191,5 +191,5 @@ class Router:
         return
 
 if __name__ == "__main__":
-    router = Router(args.asn, args.networks)
+    router = Router(args.networks)
     router.run()
