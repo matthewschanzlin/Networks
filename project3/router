@@ -49,7 +49,7 @@ class Router:
   """ Your Router """
 
     def __init__(self, asn, networks):
-        self.asn = asn[0]
+        self.asn = asn
         self.routes = {}
         self.routesAndUpdates = {}
         self.updates = {}
@@ -124,13 +124,13 @@ class Router:
         for key in self.updates:
             for val in self.updates[key]:
                 #self.updateNoMSG(val["src"], val, self.routes, self.routesAndUpdates)
-                networkAddress = RouterUtils.calculateNetAddress(packet["msg"]["network"], packet["msg"]["netmask"], self.maskConvTable)
+                networkAddress = RouterUtils.calculateNetAddress(val["msg"]["network"], val["msg"]["netmask"], self.maskConvTable)
 
-                if (routes.get(networkAddress) == None):
-                    self.routes[networkAddress] = packet["src"]
-                elif (RouterUtils.isBestPath(packet, self.routesAndUpdates[networkAddress][0])):
-                    self.routes[networkAddress] = packet["src"]
-                RouterUtils.placeUpdateInOrder(networkAddress, packet, self.routes, self.routesAndUpdates)
+                if (self.routes.get(networkAddress) == None):
+                    self.routes[networkAddress] = val["src"]
+                elif (RouterUtils.isBestPath(val, self.routesAndUpdates[networkAddress][0])):
+                    self.routes[networkAddress] = val["src"]
+                RouterUtils.placeUpdateInOrder(networkAddress, val, self.routes, self.routesAndUpdates)
                 self.coalesce()
 
         RouterUtils.forwardRevoke(srcif, packet, self.relations, self.sockets)
