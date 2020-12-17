@@ -103,7 +103,7 @@ class Router:
 
         del packet["msg"]["ASPath"][-1]
 
-    def revoke(self, packet, srcif):
+    def revokeV2(self, packet, srcif):
         self.routes = {}
         self.routesAndUpdates = {}
 
@@ -132,6 +132,18 @@ class Router:
                     self.routes[networkAddress] = val["src"]
                 RouterUtils.placeUpdateInOrder(networkAddress, val, self.routes, self.routesAndUpdates)
                 self.coalesce()
+
+        RouterUtils.forwardRevoke(srcif, packet, self.relations, self.sockets)
+        return True
+
+    def revoke(self, packet, srcif):
+        if (self.revokes.get(srcif) == None):
+            self.revokes[srcif] = [packet]
+        else:
+            self.revokes[srcif].append(packet)
+
+        for i in range(len(packet["msg"])):
+            RouterUtils.removePath(packet["msg"][i], srcif, self.maskConvTable, self.routes, self.routesAndUpdates)
 
         RouterUtils.forwardRevoke(srcif, packet, self.relations, self.sockets)
         return True
@@ -166,7 +178,7 @@ class Router:
             return True
 
         if (msgType == 'revoke'):
-            self.revoke(packet, srcif)
+            self.revokeV2(packet, srcif)
             return True
 
         return False
