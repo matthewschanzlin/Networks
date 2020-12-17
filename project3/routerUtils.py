@@ -96,10 +96,10 @@ class RouterUtils:
     def getCoalesce(routesAndUpdates):
         for key1, value1 in routesAndUpdates.items():
           for key2, value2 in routesAndUpdates.items():
-            if (canCoalesceKey(key1, key2)):
+            if (RouterUtils.canCoalesceKey(key1, key2)):
               for msg1 in value1:
                 for msg2 in value2:
-                  if sameAttributes(msg1, msg2):
+                  if RouterUtils.sameAttributes(msg1, msg2):
                     return [key1, key2]
 
         return None
@@ -124,7 +124,7 @@ class RouterUtils:
 
         for i in range(len(updates1)):
           for j in range(len(updates2)):
-            if sameAttributes(updates1[i], updates2[j]):
+            if RouterUtils.sameAttributes(updates1[i], updates2[j]):
               newMsg = updates1[i]
               newMsg['msg']['network'] = newIp
               newMsg['msg']['netmask'] = newNetmask

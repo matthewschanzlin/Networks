@@ -81,10 +81,10 @@ class Router:
       aggregate = RouterUtils.getCoalesce(self.routesAndUpdates)
       if (aggregate == None):
         break
-      self.handleCoalesce(aggregate[0], aggregate[1], self.routes, self.routesAndUpdates)
+      RouterUtils.handleCoalesce(aggregate[0], aggregate[1], self.routes, self.routesAndUpdates)
     return False
 
-  def updateNoMSG(srcif, packet, routes, routesAndUpdates):
+  def updateNoMSG(self, srcif, packet, routes, routesAndUpdates):
     networkAddress = self.calculateNetAddress(packet["msg"]["network"], packet["msg"]["netmask"])
 
     if (routes.get(networkAddress) == None):
