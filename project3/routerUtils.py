@@ -150,7 +150,6 @@ class RouterUtils:
               return True
         return False
 
-
     def placeUpdateInOrder(networkAddress, packet, routes, routesAndUpdates):
         newPacket = {"type": "update", "src": packet["src"], "dst": packet["dst"],
                      "msg": {"network": packet["msg"]["network"], "netmask": packet["msg"]["netmask"],
@@ -232,3 +231,39 @@ class RouterUtils:
           for key in relations:
             if (relations[key] == CUST) and (key != srcif):
               RouterUtils.sendPacketHelper(newPacket, key, sockets)
+
+    def forwardRevoke(srcif, packet, relations, sockets):
+        newPacket = {"type": "revoke", "src": None, "dst": None, "msg": packet["msg"]}
+        ogSrc = packet["src"]
+        if (relations[ogSrc] == CUST):
+          for key in sockets:
+            if key != srcif:
+              RouterUtils.sendPacketHelper(newPacket, key, sockets)
+        else:
+          for key in relations:
+            if (relations[key] == CUST) and (key != srcif):
+              RouterUtils.sendPacketHelper(newPacket, key, sockets)
+
+    def removePath(network, srcif, maskConvTable, routes, routesAndUpdates):
+        networkAddress = RouterUtils.calculateNetAddress(network["network"], network["netmask"], maskConvTable)
+        if routesAndUpdates.get(networkAddress) == None:
+          return True
+
+        n = len(routesAndUpdates[networkAddress])
+        i = 0
+        while i < n:
+          if routesAndUpdates[networkAddress][i]["src"] == srcif:
+            del routesAndUpdates[networkAddress][i]
+            n -= 1
+          else:
+            i += 1
+
+        if len(routesAndUpdates[networkAddress]) == 0:
+          del routesAndUpdates[networkAddress]
+          del routes[networkAddress]
+          return True
+
+        if routes[networkAddress] == srcif:
+          routes[networkAddress] = routesAndUpdates[networkAddress][0]["src"]
+
+        return True

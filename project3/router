@@ -136,10 +136,8 @@ class Router:
       for val in self.updates[key]:
         self.updateNoMSG(val["src"], val, self.routes, self.routesAndUpdates)
 
-    self.forwardRevoke(srcif, packet)
+    RouterUtils.forwardRevoke(srcif, packet, self.relations, self.sockets)
     return True
-
-
 
   def revoke(self, packet, srcif):
     if (self.revokes.get(srcif) == None):
@@ -148,47 +146,10 @@ class Router:
       self.revokes[srcif].append(packet)
 
     for i in range(len(packet["msg"])):
-      self.removePath(packet["msg"][i], srcif)
+      RouterUtils.removePath(packet["msg"][i], srcif, self.maskConvTable, self.routes, self.routesAndUpdates)
 
-    self.forwardRevoke(srcif, packet)
-
+    RouterUtils.forwardRevoke(srcif, packet, self.relations, self.sockets)
     return True
-
-  def removePath(self, network, srcif):
-    networkAddress = RouterUtils.calculateNetAddress(network["network"], network["netmask"], self.maskConvTable)
-    if self.routesAndUpdates.get(networkAddress) == None:
-      return True
-
-    n = len(self.routesAndUpdates[networkAddress])
-    i = 0
-    while i < n:
-      if self.routesAndUpdates[networkAddress][i]["src"] == srcif:
-        del self.routesAndUpdates[networkAddress][i]
-        n -= 1
-      else:
-        i += 1
-
-    if len(self.routesAndUpdates[networkAddress]) == 0:
-      del self.routesAndUpdates[networkAddress]
-      del self.routes[networkAddress]
-      return True
-
-    if self.routes[networkAddress] == srcif:
-      self.routes[networkAddress] = self.routesAndUpdates[networkAddress][0]["src"]
-
-    return True
-
-  def forwardRevoke(self, srcif, packet):
-    newPacket = {"type": "revoke", "src": None, "dst": None, "msg": packet["msg"]}
-    ogSrc = packet["src"]
-    if (self.relations[ogSrc] == CUST):
-      for key in self.sockets:
-        if key != srcif:
-          RouterUtils.sendPacketHelper(newPacket, key, self.sockets)
-    else:
-      for key in self.relations:
-        if (self.relations[key] == CUST) and (key != srcif):
-          RouterUtils.sendPacketHelper(newPacket, key, self.sockets)
 
   def dump(self, packet, srcif):
     fowardTable = []
@@ -199,8 +160,6 @@ class Router:
         peer = self.routesAndUpdates[key][i]["src"]
         entry = {"network": network, "netmask": netmask, "peer": peer}
         fowardTable.append(entry)
-
-
     dumpMsg = {"src": packet["dst"], "dst": packet["src"], "type": "table", "msg": fowardTable}
     packetJSON = json.dumps(dumpMsg)
     packetJSON = packetJSON.encode("ASCII")
