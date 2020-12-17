@@ -1,4 +1,8 @@
 import json
+import ipaddress
+from ipaddress import IPv4Network
+
+CUST = 'cust'
 
 class RouterUtils:
     def sendPacketHelper(newPacket, key, sockets):
@@ -13,7 +17,7 @@ class RouterUtils:
 
         return True
 
-    def forwardData(self, sock, packet):
+    def forwardData(sock, packet):
         packetJSON = json.dumps(packet)
         packetJSON = packetJSON.encode("ASCII")
         sock.send(packetJSON)
