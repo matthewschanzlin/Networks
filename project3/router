@@ -92,6 +92,7 @@ class Router:
     elif (RouterUtils.isBestPath(packet, routesAndUpdates[networkAddress][0])):
       routes[networkAddress] = packet["src"]
     RouterUtils.placeUpdateInOrder(networkAddress, packet, self.routes, self.routesAndUpdates)
+    self.coalesce()
 
     return False
 
@@ -134,7 +135,6 @@ class Router:
     for key in self.updates:
       for val in self.updates[key]:
         self.updateNoMSG(val["src"], val, self.routes, self.routesAndUpdates)
-        self.coalesce()
 
     RouterUtils.forwardRevoke(srcif, packet, self.relations, self.sockets)
     return True
