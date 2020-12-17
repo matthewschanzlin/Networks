@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """ Skeleton Implementation of Project 2 for NEU CS3700"""
 
-import argparse
-import json
-import select
-import socket
-
-import ipaddress
+import argparse, socket, time, json, select, struct, math, ipaddress
 from ipaddress import IPv4Network
-
 from routerUtils import RouterUtils
+
+parser = argparse.ArgumentParser(description='route packets')
+parser.add_argument('asn', type=int, help="AS Number")
+parser.add_argument('networks', metavar='networks', type=str, nargs='+', help="networks")
+args = parser.parse_args()
 
 
 ##########################################################################################
@@ -41,22 +40,18 @@ CUST = "cust"
 PEER = "peer"
 PROV = "prov"
 
-
-
 ##########################################################################################
 
 class Router:
     """ Your Router """
 
-    def __init__(self, asn, networks):
-        self.asn = asn
+    def __init__(self, networks):
         self.routes = {}
         self.routesAndUpdates = {}
         self.updates = {}
         self.revokes = {}
         self.relations = {}
         self.sockets = {}
-        self.maskConvTable = {"255": 8, "254": 7, "252": 6, "248": 5, "240": 4, "224": 3, "192": 2, "128": 1, "0": 0}
 
         for relationship in networks:
             network, relation = relationship.split("-")
@@ -89,14 +84,14 @@ class Router:
         else:
             self.updates[srcif].append(packet)
 
-        networkAddress = RouterUtils.calculateNetAddress(packet["msg"]["network"], packet["msg"]["netmask"], self.maskConvTable)
+        networkAddress = RouterUtils.calculateNetAddress(packet["msg"]["network"], packet["msg"]["netmask"])
 
         if (self.routes.get(networkAddress) == None):
             self.routes[networkAddress] = packet["src"]
         elif (RouterUtils.isBestPath(packet, self.routesAndUpdates[networkAddress][0])):
             self.routes[networkAddress] = packet["src"]
         RouterUtils.placeUpdateInOrder(networkAddress, packet, self.routes, self.routesAndUpdates)
-        RouterUtils.forwardUpdate(srcif, packet, self.asn, self.relations, self.sockets)
+        RouterUtils.forwardUpdate(srcif, packet, args.asn, self.relations, self.sockets)
         self.coalesce()
 
         return False
@@ -123,8 +118,7 @@ class Router:
 
         for key in self.updates:
             for val in self.updates[key]:
-                #self.updateNoMSG(val["src"], val, self.routes, self.routesAndUpdates)
-                networkAddress = RouterUtils.calculateNetAddress(val["msg"]["network"], val["msg"]["netmask"], self.maskConvTable)
+                networkAddress = RouterUtils.calculateNetAddress(val["msg"]["network"], val["msg"]["netmask"])
 
                 if (self.routes.get(networkAddress) == None):
                     self.routes[networkAddress] = val["src"]
@@ -197,9 +191,5 @@ class Router:
         return
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='route packets')
-    parser.add_argument('asn', type=int, help="AS Number")
-    parser.add_argument('networks', metavar='networks', type=str, nargs='+', help="networks")
-    args = parser.parse_args()
     router = Router(args.asn, args.networks)
     router.run()
