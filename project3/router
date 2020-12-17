@@ -85,11 +85,11 @@ class Router:
     return False
 
   def updateNoMSG(self, srcif, packet, routes, routesAndUpdates):
-    networkAddress = self.calculateNetAddress(packet["msg"]["network"], packet["msg"]["netmask"])
+    networkAddress = RouterUtils.calculateNetAddress(packet["msg"]["network"], packet["msg"]["netmask"], self.maskConvTable)
 
     if (routes.get(networkAddress) == None):
       routes[networkAddress] = packet["src"]
-    elif (self.isBestPath(packet, routesAndUpdates[networkAddress][0])):
+    elif (RouterUtils.isBestPath(packet, routesAndUpdates[networkAddress][0])):
       routes[networkAddress] = packet["src"]
     self.placeUpdateInOrder(networkAddress, packet)
     self.coalesce()
@@ -102,28 +102,17 @@ class Router:
     else:
       self.updates[srcif].append(packet)
 
-    networkAddress = self.calculateNetAddress(packet["msg"]["network"], packet["msg"]["netmask"])
+    networkAddress = RouterUtils.calculateNetAddress(packet["msg"]["network"], packet["msg"]["netmask"], self.maskConvTable)
 
     if (self.routes.get(networkAddress) == None):
       self.routes[networkAddress] = packet["src"]
-    elif (self.isBestPath(packet, self.routesAndUpdates[networkAddress][0])):
+    elif (RouterUtils.isBestPath(packet, self.routesAndUpdates[networkAddress][0])):
       self.routes[networkAddress] = packet["src"]
     RouterUtils.placeUpdateInOrder(networkAddress, packet, self.routes, self.routesAndUpdates)
     self.forwardUpdate(srcif, packet)
     self.coalesce()
 
     return False
-
-  def calculateNetAddress(self, address, mask):
-    maskVal = 0
-    maskArr = mask.split(".")
-    for i in range(len(maskArr)):
-      if (self.maskConvTable.get(maskArr[i]) == None):
-        print("BIT MASK DOESNT EXIST: %s" % maskArr[i])
-        raise KeyError
-      maskVal += self.maskConvTable[maskArr[i]]
-
-    return address + "/" + str(maskVal)
 
   def forwardUpdate(self, srcif, packet):
     newPacket = {"type": "update", "src": None, "dst": None, "msg": packet["msg"]}
@@ -140,47 +129,6 @@ class Router:
           RouterUtils.sendPacketHelper(newPacket, key, self.sockets)
 
     del packet["msg"]["ASPath"][-1]
-
-  def isBestPath(self, newPacket, oldPacket):
-    msg = 'msg'
-    localpref = 'localpref'
-    selfOrigin = 'selfOrigin'
-    ASPATH = 'ASPath'
-    origin = 'origin'
-
-    if (newPacket[msg][localpref] > oldPacket[msg][localpref]):
-      return True
-    elif (newPacket[msg][localpref] < oldPacket[msg][localpref]):
-      return False
-
-    if (newPacket[msg][selfOrigin] and not(oldPacket[msg][selfOrigin])):
-      return True
-    elif (not(newPacket[msg][selfOrigin]) and (oldPacket[msg][selfOrigin])):
-      return False
-
-    if (len(newPacket[msg][ASPATH]) < len(oldPacket[msg][ASPATH])):
-      return True
-    elif (len(newPacket[msg][ASPATH]) > len(oldPacket[msg][ASPATH])):
-      return False
-
-    if ((newPacket[msg][origin] == "IGP") and (not(oldPacket[msg][origin]) == "IGP")):
-      return True
-    elif ((not(newPacket[msg][origin]) == "IGP") and (oldPacket[msg][origin] == "IGP")):
-      return False
-
-    if ((newPacket[msg][origin] == "EGP") and (not(oldPacket[msg][origin]) == "EGP")):
-      return True
-    elif ((not(newPacket[msg][origin]) == "EGP") and (oldPacket[msg][origin] == "EGP")):
-      return False
-
-    if ((newPacket[msg][origin] == "UNK") and (not(oldPacket[msg][origin]) == "UNK")):
-      return True
-    elif ((not(newPacket[msg][origin]) == "UNK") and (oldPacket[msg][origin] == "UNK")):
-      return False
-
-    newIP = ipaddress.IPv4Address(newPacket['src'])
-    oldIP = ipaddress.IPv4Address(oldPacket['src'])
-    return (newIP < oldIP)
 
   def revokeV2(self, packet, srcif):
     self.routes = {}
@@ -221,7 +169,7 @@ class Router:
     return True
 
   def removePath(self, network, srcif):
-    networkAddress = self.calculateNetAddress(network["network"], network["netmask"])
+    networkAddress = RouterUtils.calculateNetAddress(network["network"], network["netmask"], self.maskConvTable)
     if self.routesAndUpdates.get(networkAddress) == None:
       return True
 

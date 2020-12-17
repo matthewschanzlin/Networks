@@ -161,10 +161,60 @@ class RouterUtils:
           return True
 
         for i in range(len(routesAndUpdates[networkAddress])):
-          if self.isBestPath(newPacket, routesAndUpdates[networkAddress][i]):
+          if RouterUtils.isBestPath(newPacket, routesAndUpdates[networkAddress][i]):
             routesAndUpdates[networkAddress].insert(i, newPacket)
             return True
-
         routesAndUpdates[networkAddress].append(newPacket)
 
         return True
+
+    def isBestPath(newPacket, oldPacket):
+        msg = 'msg'
+        localpref = 'localpref'
+        selfOrigin = 'selfOrigin'
+        ASPATH = 'ASPath'
+        origin = 'origin'
+
+        if (newPacket[msg][localpref] > oldPacket[msg][localpref]):
+            return True
+        elif (newPacket[msg][localpref] < oldPacket[msg][localpref]):
+            return False
+
+        if (newPacket[msg][selfOrigin] and not(oldPacket[msg][selfOrigin])):
+            return True
+        elif (not(newPacket[msg][selfOrigin]) and (oldPacket[msg][selfOrigin])):
+            return False
+
+        if (len(newPacket[msg][ASPATH]) < len(oldPacket[msg][ASPATH])):
+            return True
+        elif (len(newPacket[msg][ASPATH]) > len(oldPacket[msg][ASPATH])):
+            return False
+
+        if ((newPacket[msg][origin] == "IGP") and (not(oldPacket[msg][origin]) == "IGP")):
+            return True
+        elif ((not(newPacket[msg][origin]) == "IGP") and (oldPacket[msg][origin] == "IGP")):
+            return False
+
+        if ((newPacket[msg][origin] == "EGP") and (not(oldPacket[msg][origin]) == "EGP")):
+            return True
+        elif ((not(newPacket[msg][origin]) == "EGP") and (oldPacket[msg][origin] == "EGP")):
+            return False
+
+        if ((newPacket[msg][origin] == "UNK") and (not(oldPacket[msg][origin]) == "UNK")):
+            return True
+        elif ((not(newPacket[msg][origin]) == "UNK") and (oldPacket[msg][origin] == "UNK")):
+            return False
+
+        newIP = ipaddress.IPv4Address(newPacket['src'])
+        oldIP = ipaddress.IPv4Address(oldPacket['src'])
+        return (newIP < oldIP)
+
+    def calculateNetAddress(address, mask, maskConvTable):
+        maskVal = 0
+        maskArr = mask.split(".")
+        for i in range(len(maskArr)):
+        if (maskConvTable.get(maskArr[i]) == None):
+         raise KeyError
+        maskVal += maskConvTable[maskArr[i]]
+
+        return address + "/" + str(maskVal)
