@@ -85,14 +85,6 @@ class Router:
     return False
 
   def updateNoMSG(self, srcif, packet, routes, routesAndUpdates):
-    networkAddress = RouterUtils.calculateNetAddress(packet["msg"]["network"], packet["msg"]["netmask"], self.maskConvTable)
-
-    if (routes.get(networkAddress) == None):
-      routes[networkAddress] = packet["src"]
-    elif (RouterUtils.isBestPath(packet, routesAndUpdates[networkAddress][0])):
-      routes[networkAddress] = packet["src"]
-    RouterUtils.placeUpdateInOrder(networkAddress, packet, self.routes, self.routesAndUpdates)
-    self.coalesce()
 
     return False
 
@@ -134,7 +126,15 @@ class Router:
         self.updates[srcif].pop(toDelete[k])
     for key in self.updates:
       for val in self.updates[key]:
-        self.updateNoMSG(val["src"], val, self.routes, self.routesAndUpdates)
+        #self.updateNoMSG(val["src"], val, self.routes, self.routesAndUpdates)
+        networkAddress = RouterUtils.calculateNetAddress(packet["msg"]["network"], packet["msg"]["netmask"], self.maskConvTable)
+
+        if (routes.get(networkAddress) == None):
+          self.routes[networkAddress] = packet["src"]
+        elif (RouterUtils.isBestPath(packet, self.routesAndUpdates[networkAddress][0])):
+          self.routes[networkAddress] = packet["src"]
+        RouterUtils.placeUpdateInOrder(networkAddress, packet, self.routes, self.routesAndUpdates)
+        self.coalesce()
 
     RouterUtils.forwardRevoke(srcif, packet, self.relations, self.sockets)
     return True
