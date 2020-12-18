@@ -47,11 +47,10 @@ class Router:
 
     def __init__(self, networks):
         self.routes = {}
-        self.routesAndUpdates = {}
         self.updates = {}
-        self.revokes = {}
         self.relations = {}
         self.sockets = {}
+        self.forwardingInfo = {}
 
         for relationship in networks:
             network, relation = relationship.split("-")
@@ -72,10 +71,10 @@ class Router:
 
     def coalesce(self):
         while(True):
-            aggregate = RouterUtils.getCoalesce(self.routesAndUpdates)
+            aggregate = RouterUtils.getCoalesce(self.forwardingInfo)
             if (aggregate == None):
                 break
-            RouterUtils.handleCoalesce(aggregate[0], aggregate[1], self.routes, self.routesAndUpdates)
+            RouterUtils.handleCoalesce(aggregate[0], aggregate[1], self.routes, self.forwardingInfo)
         return False
 
     def update(self, srcif, packet):
@@ -88,9 +87,9 @@ class Router:
 
         if (self.routes.get(networkAddress) == None):
             self.routes[networkAddress] = packet["src"]
-        elif (RouterUtils.isBestPath(packet, self.routesAndUpdates[networkAddress][0])):
+        elif (RouterUtils.isBestPath(packet, self.forwardingInfo[networkAddress][0])):
             self.routes[networkAddress] = packet["src"]
-        RouterUtils.placeUpdateInOrder(networkAddress, packet, self.routes, self.routesAndUpdates)
+        RouterUtils.placeUpdateInOrder(networkAddress, packet, self.routes, self.forwardingInfo)
         RouterUtils.forwardUpdate(srcif, packet, args.asn, self.relations, self.sockets)
         self.coalesce()
 
@@ -98,9 +97,9 @@ class Router:
 
         del packet["msg"]["ASPath"][-1]
 
-    def revoke(self, packet, srcif):
+    def revoke(self, srcif, packet):
         self.routes = {}
-        self.routesAndUpdates = {}
+        self.forwardingInfo = {}
 
         for i in range(len(packet["msg"])):
             network = packet["msg"][i]["network"]
@@ -122,44 +121,45 @@ class Router:
 
                 if (self.routes.get(networkAddress) == None):
                     self.routes[networkAddress] = val["src"]
-                elif (RouterUtils.isBestPath(val, self.routesAndUpdates[networkAddress][0])):
+                elif (RouterUtils.isBestPath(val, self.forwardingInfo[networkAddress][0])):
                     self.routes[networkAddress] = val["src"]
-                RouterUtils.placeUpdateInOrder(networkAddress, val, self.routes, self.routesAndUpdates)
+                RouterUtils.placeUpdateInOrder(networkAddress, val, self.routes, self.forwardingInfo)
                 self.coalesce()
 
         RouterUtils.forwardRevoke(srcif, packet, self.relations, self.sockets)
         return True
 
-    def dump(self, packet, srcif):
+    def dump(self, srcif, packet):
         fowardTable = []
-        for key in self.routesAndUpdates:
+        for key in self.forwardingInfo:
             network, cidr = key.split("/")
-            for i in range(len(self.routesAndUpdates[key])):
-                netmask = self.routesAndUpdates[key][i]["msg"]["netmask"]
-                peer = self.routesAndUpdates[key][i]["src"]
+            for i in range(len(self.forwardingInfo[key])):
+                netmask = self.forwardingInfo[key][i]["msg"]["netmask"]
+                peer = self.forwardingInfo[key][i]["src"]
                 entry = {"network": network, "netmask": netmask, "peer": peer}
                 fowardTable.append(entry)
-        dumpMsg = {"src": packet["dst"], "dst": packet["src"], "type": "table", "msg": fowardTable}
-        packetJSON = json.dumps(dumpMsg)
-        packetJSON = packetJSON.encode("ASCII")
-        self.sockets[srcif].send(packetJSON)
+        msg = {"src": packet["dst"], "dst": packet["src"], "type": "table", "msg": fowardTable}
+        self.sock_send(self.sockets[srcif], msg)
         return True
 
     def handle_packet(self, srcif, packet):
         if packet['type'] == DATA:
             self.forward(srcif, packet)
         elif packet['type'] == DUMP:
-            self.dump(packet, srcif)
+            self.dump(srcif, packet)
         elif packet['type'] == UPDT:
             self.update(srcif, packet)
         elif packet['type'] == RVKE:
-            self.revoke(packet, srcif)
+            self.revoke(srcif, packet)
         else:
             return False
         return True
 
+    def sock_send(self, sock, msg):
+        sock.send(json.dumps(msg).encode('ASCII'))
+
     def send_error(self, conn, msg):
-        conn.send(json.dumps(msg).encode('ASCII'))
+        self.sock_send(conn, msg)
         return
 
     def run(self):

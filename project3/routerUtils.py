@@ -93,9 +93,9 @@ class RouterUtils:
         return False
 
 
-    def getCoalesce(routesAndUpdates):
-        for key1, value1 in routesAndUpdates.items():
-          for key2, value2 in routesAndUpdates.items():
+    def getCoalesce(forwardingInfo):
+        for key1, value1 in forwardingInfo.items():
+          for key2, value2 in forwardingInfo.items():
             if (RouterUtils.canCoalesceKey(key1, key2)):
               for msg1 in value1:
                 for msg2 in value2:
@@ -104,7 +104,7 @@ class RouterUtils:
 
         return None
 
-    def handleCoalesce(key1, key2, routes, routesAndUpdates):
+    def handleCoalesce(key1, key2, routes, forwardingInfo):
         ip, cidr = key1.split("/")
         binary = list(''.join(format(int(x), '08b') for x in ip.split(".")))
         binary[int(cidr) - 1] = '0'
@@ -119,8 +119,8 @@ class RouterUtils:
         newKey = newIp + '/' + newCidr
 
         newNetmask = str(IPv4Network(newKey).netmask)
-        updates1 = routesAndUpdates[key1]
-        updates2 = routesAndUpdates[key2]
+        updates1 = forwardingInfo[key1]
+        updates2 = forwardingInfo[key2]
 
         for i in range(len(updates1)):
           for j in range(len(updates2)):
@@ -128,42 +128,42 @@ class RouterUtils:
               newMsg = updates1[i]
               newMsg['msg']['network'] = newIp
               newMsg['msg']['netmask'] = newNetmask
-              RouterUtils.placeUpdateInOrder(newKey, newMsg, routes, routesAndUpdates)
+              RouterUtils.placeUpdateInOrder(newKey, newMsg, routes, forwardingInfo)
               updates1.pop(i)
               updates2.pop(j)
-              routesAndUpdates[key1] = updates1
-              routesAndUpdates[key2] = updates2
-              routes[newKey] = routesAndUpdates[newKey][0]["src"]
+              forwardingInfo[key1] = updates1
+              forwardingInfo[key2] = updates2
+              routes[newKey] = forwardingInfo[newKey][0]["src"]
 
-              if len(routesAndUpdates[key1]) == 0:
+              if len(forwardingInfo[key1]) == 0:
                 del routes[key1]
-                del routesAndUpdates[key1]
+                del forwardingInfo[key1]
               else:
-                routes[key1] = routesAndUpdates[key1][0]["src"]
+                routes[key1] = forwardingInfo[key1][0]["src"]
 
-              if len(routesAndUpdates[key2]) == 0:
+              if len(forwardingInfo[key2]) == 0:
                 del routes[key2]
-                del routesAndUpdates[key2]
+                del forwardingInfo[key2]
               else:
-                routes[key2] = routesAndUpdates[key2][0]["src"]
+                routes[key2] = forwardingInfo[key2][0]["src"]
 
               return True
         return False
 
-    def placeUpdateInOrder(networkAddress, packet, routes, routesAndUpdates):
+    def placeUpdateInOrder(networkAddress, packet, routes, forwardingInfo):
         newPacket = {"type": "update", "src": packet["src"], "dst": packet["dst"],
                      "msg": {"network": packet["msg"]["network"], "netmask": packet["msg"]["netmask"],
                              "localpref": packet["msg"]["localpref"], "ASPath": packet["msg"]["ASPath"],
                              "origin": packet["msg"]["origin"], "selfOrigin": packet["msg"]["selfOrigin"]}}
-        if routesAndUpdates.get(networkAddress) == None:
-          routesAndUpdates[networkAddress] = [newPacket]
+        if forwardingInfo.get(networkAddress) == None:
+          forwardingInfo[networkAddress] = [newPacket]
           return True
 
-        for i in range(len(routesAndUpdates[networkAddress])):
-          if RouterUtils.isBestPath(newPacket, routesAndUpdates[networkAddress][i]):
-            routesAndUpdates[networkAddress].insert(i, newPacket)
+        for i in range(len(forwardingInfo[networkAddress])):
+          if RouterUtils.isBestPath(newPacket, forwardingInfo[networkAddress][i]):
+            forwardingInfo[networkAddress].insert(i, newPacket)
             return True
-        routesAndUpdates[networkAddress].append(newPacket)
+        forwardingInfo[networkAddress].append(newPacket)
 
         return True
 
@@ -243,26 +243,26 @@ class RouterUtils:
             if (relations[key] == CUST) and (key != srcif):
               RouterUtils.sendPacketHelper(newPacket, key, sockets)
 
-    def removePath(network, srcif, maskConvTable, routes, routesAndUpdates):
+    def removePath(network, srcif, maskConvTable, routes, forwardingInfo):
         networkAddress = RouterUtils.calculateNetAddress(network["network"], network["netmask"], maskConvTable)
-        if routesAndUpdates.get(networkAddress) == None:
+        if forwardingInfo.get(networkAddress) == None:
           return True
 
-        n = len(routesAndUpdates[networkAddress])
+        n = len(forwardingInfo[networkAddress])
         i = 0
         while i < n:
-          if routesAndUpdates[networkAddress][i]["src"] == srcif:
-            del routesAndUpdates[networkAddress][i]
+          if forwardingInfo[networkAddress][i]["src"] == srcif:
+            del forwardingInfo[networkAddress][i]
             n -= 1
           else:
             i += 1
 
-        if len(routesAndUpdates[networkAddress]) == 0:
-          del routesAndUpdates[networkAddress]
+        if len(forwardingInfo[networkAddress]) == 0:
+          del forwardingInfo[networkAddress]
           del routes[networkAddress]
           return True
 
         if routes[networkAddress] == srcif:
-          routes[networkAddress] = routesAndUpdates[networkAddress][0]["src"]
+          routes[networkAddress] = forwardingInfo[networkAddress][0]["src"]
 
         return True
