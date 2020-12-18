@@ -103,7 +103,7 @@ class Router:
             self.routes[networkAddress] = packet['src']
         elif (RouterUtils.chooseNextPath(packet, self.forwardingInfo[networkAddress][0])):
             self.routes[networkAddress] = packet['src']
-        RouterUtils.placeUpdateInOrder(networkAddress, packet, self.routes, self.forwardingInfo)
+        RouterUtils.handleUpdate(networkAddress, packet, self.routes, self.forwardingInfo)
 
         packet['msg']['ASPath'] = packet['msg']['ASPath'] + [args.asn]
         RouterUtils.specialForward(srcif, packet, UPDT, self.sockets, self.relations)
@@ -139,7 +139,7 @@ class Router:
                     self.routes[networkAddress] = val["src"]
                 elif (RouterUtils.chooseNextPath(val, self.forwardingInfo[networkAddress][0])):
                     self.routes[networkAddress] = val["src"]
-                RouterUtils.placeUpdateInOrder(networkAddress, val, self.routes, self.forwardingInfo)
+                RouterUtils.handleUpdate(networkAddress, val, self.routes, self.forwardingInfo)
                 self.coalesce()
 
         RouterUtils.specialForward(srcif, packet, RVKE, self.sockets, self.relations)

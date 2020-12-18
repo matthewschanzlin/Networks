@@ -68,16 +68,17 @@ class RouterUtils:
     def keysCoalesce(key1, key2):
         ip1, cidr1 = key1.split("/")
         ip2, cidr2 = key2.split("/")
-        if (cidr1 == cidr2):
-          bin1 = list(''.join(format(int(x), '08b') for x in ip1.split(".")))
-          bin2 = list(''.join(format(int(x), '08b') for x in ip2.split(".")))
-          idx = int(cidr1) - 1
+        bin1 = list(''.join(format(int(x), '08b') for x in ip1.split(".")))
+        bin2 = list(''.join(format(int(x), '08b') for x in ip2.split(".")))
+        idx = int(cidr1) - 1
 
-          if ((bin1[idx] == '1') and (bin2[idx] == '0')):
-            return True
-          if ((bin1[idx] == '0') and (bin2[idx] == '1')):
-            return True
-        return False
+        c1 = cidr1 == cidr2
+        c2 = (bin1[idx] == '1') and (bin2[idx] == '0')
+        c3 = (bin1[idx] == '0') and (bin2[idx] == '1')
+
+        condition = c1 and (c2 or c3)
+        
+        return condition
 
     def handleCoalesce(keys, routes, forwardingInfo):
         key1 = keys[0]
@@ -105,7 +106,7 @@ class RouterUtils:
               newMsg = updates1[i]
               newMsg['msg']['network'] = newIp
               newMsg['msg']['netmask'] = newNetmask
-              RouterUtils.placeUpdateInOrder(newKey, newMsg, routes, forwardingInfo)
+              RouterUtils.handleUpdate(newKey, newMsg, routes, forwardingInfo)
               updates1.pop(i)
               updates2.pop(j)
               forwardingInfo[key1] = updates1
@@ -127,7 +128,6 @@ class RouterUtils:
               return True
         return False
 
-
     def formatUpdate(packet):
         update = {'src': packet[SRCE], 'dst': packet[DEST], 'type': UPDT}
         update[MESG] = {'localpref': packet[MESG][LPRF], 'ASPath': packet[MESG][APTH], 'network': packet[MESG][NTWK], 'netmask': packet[MESG][NMSK], 'origin': packet[MESG][ORIG], 'selfOrigin': packet[MESG][SORG]}
@@ -147,10 +147,9 @@ class RouterUtils:
             forwardingInfo[address].append(update)
         return True
 
-    def placeUpdateInOrder(address, packet, routes, forwardingInfo):
+    def handleUpdate(address, packet, routes, forwardingInfo):
         update = RouterUtils.formatUpdate(packet)
         check = lambda fi, na, u: [u] if na not in fi else fi[na]
-
         if address not in forwardingInfo:
             forwardingInfo[address] = [update]
         else:
