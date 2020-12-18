@@ -117,9 +117,13 @@ class Router:
 
             toDelete = []
 
-            for j in range(len(self.updates[srcif])):
-                if (self.updates[srcif][j]["msg"]["network"] == network) and (self.updates[srcif][j]["msg"]["netmask"] == netmask):
-                    toDelete.append(j)
+            index = 0
+            while index < len(self.updates[srcif]):
+                if (self.updates[srcif][index]["msg"]["network"] == network) and (self.updates[srcif][index]["msg"]["netmask"] == netmask):
+                    self.updates[srcif].pop(index)
+                else:
+                    index += 1
+
 
             for k in range(len(toDelete)):
                 self.updates[srcif].pop(toDelete[k])
