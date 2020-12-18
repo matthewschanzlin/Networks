@@ -90,13 +90,13 @@ class Router:
             return True
         return False
 
-    def getCoalesce(self, forwardingInfo):
+    def findCoalescablePairs(self, forwardingInfo):
         forwardingItems = forwardingInfo.items()
         for forwardingItem in forwardingItems:
             coalescablePairs = list(map(lambda item: (forwardingItem, item), list(filter(lambda item: self.canCoalesceKey(forwardingItem[0], item[0]), forwardingItems))))
             for pair in coalescablePairs:
                 for message in pair[0][1]:
-                    sameAttributeMessages = list(filter(lambda m: RouterUtils.info_matching((message, m[1]))), pair[1]))
+                    sameAttributeMessages = list(filter(lambda m: RouterUtils.info_matching((message, m[1])), pair[1]))
                     if len(sameAttributeMessages) > 0:
                         matching_info = (pair[0][0], sameAttributeMessages[0][0])
                         return matching_info
@@ -125,7 +125,7 @@ class Router:
 
 
     def coalesce(self):
-        coalescable = self.getCoalesce(self.forwardingInfo)
+        coalescable = self.findCoalescablePairs(self.forwardingInfo)
         if coalescable:
             RouterUtils.handleCoalesce(coalescable, self.routes, self.forwardingInfo)
             self.coalesce()
