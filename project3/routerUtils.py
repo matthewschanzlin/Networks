@@ -66,22 +66,41 @@ class RouterUtils:
         return src and fields
 
     def keysCoalesce(key1, key2):
-        comparison_bit = int(key1.split("/")[1]) - 1
-        comparison_bits = ('', '')
+        ip1, cidr1 = key1.split("/")
+        ip2, cidr2 = key2.split("/")
+
+        comparison_bit = int(ip1.split("/")[1]) - 1
+        comparison_bits = ['', '']
         comparator = '08b'
 
-        for part in key1.split('.')[0].split('.'):
+        for part in ip1.split('.'):
             comparison_bits[0] +=  format(int(part), comparator)
 
-        for part in key2.split('.')[0].split('.'):
+        for part in ip2.split('.'):
             comparison_bits[1] += format(int(part), comparator)
 
         c1 = cidr1 == cidr2
+        print(comparison_bits)
         c2 = comparison_bits[0][comparison_bit] != comparison_bits[1][comparison_bit]
 
         condition = c1 and c2
 
         return condition
+
+
+    def keysCoalesce(key1, key2):
+        ip1, cidr1 = key1.split("/")
+        ip2, cidr2 = key2.split("/")
+        if (cidr1 == cidr2):
+          bin1 = list(''.join(format(int(x), '08b') for x in ip1.split(".")))
+          bin2 = list(''.join(format(int(x), '08b') for x in ip2.split(".")))
+          idx = int(cidr1) - 1
+
+          if ((bin1[idx] == '1') and (bin2[idx] == '0')):
+            return True
+          if ((bin1[idx] == '0') and (bin2[idx] == '1')):
+            return True
+        return False
 
     def handleCoalesce(keys, routes, forwardingInfo):
         key1 = keys[0]
@@ -136,7 +155,7 @@ class RouterUtils:
         update[MESG] = {'localpref': packet[MESG][LPRF], 'ASPath': packet[MESG][APTH], 'network': packet[MESG][NTWK], 'netmask': packet[MESG][NMSK], 'origin': packet[MESG][ORIG], 'selfOrigin': packet[MESG][SORG]}
         return update
 
-    def insertUpdate(packet, address, forwardingInfo):
+    def insertUpdate(update, address, forwardingInfo):
         notInserted = True
         index = 0
         while notInserted and index < len(forwardingInfo):
