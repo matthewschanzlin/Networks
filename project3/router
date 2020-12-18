@@ -93,16 +93,16 @@ class Router:
         if (relations[ogSrc] == CUST):
             for key in sockets:
                 if key != srcif:
-                    newPacket['dst'] = srcif
+                    newPacket['dst'] = key
                     newPacket['src'] = '.'.join(key.split('.')[:-1] + ['1'])
-                    self.sock_send(self.sockets[scrif], newPacket)
+                    self.sock_send(self.sockets[key], newPacket)
 
         else:
             for key in relations:
                 if (relations[key] == CUST) and (key != srcif):
-                    newPacket['dst'] = srcif
+                    newPacket['dst'] = key
                     newPacket['src'] = '.'.join(key.split('.')[:-1] + ['1'])
-                    self.sock_send(self.sockets[scrif], newPacket)
+                    self.sock_send(self.sockets[key], newPacket)
 
     def forwardRevoke(self, srcif, packet, relations, sockets):
         newPacket = {"type": "revoke", "src": None, "dst": None, "msg": packet["msg"]}
@@ -112,15 +112,41 @@ class Router:
         if (relations[ogSrc] == CUST):
             for key in sockets:
                 if key != srcif:
-                    newPacket['dst'] = srcif
+                    newPacket['dst'] = key
                     newPacket['src'] = '.'.join(key.split('.')[:-1] + ['1'])
-                    self.sock_send(self.sockets[scrif], newPacket)
+                    self.sock_send(self.sockets[key], newPacket)
         else:
             for key in relations:
                 if (relations[key] == CUST) and (key != srcif):
-                    newPacket['dst'] = srcif
+                    newPacket['dst'] = key
                     newPacket['src'] = '.'.join(key.split('.')[:-1] + ['1'])
-                    self.sock_send(self.sockets[scrif], newPacket)
+                    self.sock_send(self.sockets[key], newPacket)
+
+
+
+
+
+    def specialForward(self, srcif, packet, type):
+        forward_packet = {'src': None, 'dst': None, 'type': type, 'msg': packet['msg']}
+        if (self.relations[packet['src']] == CUST):
+            self.forwardSocks(srcif, forward_packet)
+        else:
+            self.forwardRelations(srcif, forward_packet)
+
+
+    def forwardSocks(self, srcif, packet):
+        for sock in self.sockets:
+            if sock != srcif:
+                packet['src'] = '.'.join(sock.split('.')[:-1] + ['1'])
+                packet['dst'] = sock
+                self.sock_send(self.sockets[sock], packet)
+
+    def forwardRelations(self, srcif, packet):
+        for relation in self.relations:
+            if (self.relations[relation] == CUST) and (relation != srcif):
+                packet['src'] = '.'.join(relation.split('.')[:-1] + ['1'])
+                packet['dst'] = relation
+                self.sock_send(self.sockets[relation], packet)
 
 
 
@@ -132,14 +158,19 @@ class Router:
         else:
             self.updates[srcif].append(packet)
 
-        networkAddress = RouterUtils.calculateNetAddress(packet["msg"]["network"], packet["msg"]["netmask"])
+        networkAddress = RouterUtils.calculateNetAddress(packet['msg']['network'], packet['msg']['netmask'])
 
         if (self.routes.get(networkAddress) == None):
-            self.routes[networkAddress] = packet["src"]
+            self.routes[networkAddress] = packet['src']
         elif (RouterUtils.isBestPath(packet, self.forwardingInfo[networkAddress][0])):
-            self.routes[networkAddress] = packet["src"]
+            self.routes[networkAddress] = packet['src']
         RouterUtils.placeUpdateInOrder(networkAddress, packet, self.routes, self.forwardingInfo)
-        self.forwardUpdate(srcif, packet, args.asn, self.relations, self.sockets)
+
+
+        packet['msg']['ASPATH'] = packet['msg']['ASPATH'] + args.asn
+        self.specialForward(srcif, packet, UPDT)
+
+
         self.coalesce()
 
         return False
@@ -175,7 +206,7 @@ class Router:
                 RouterUtils.placeUpdateInOrder(networkAddress, val, self.routes, self.forwardingInfo)
                 self.coalesce()
 
-        self.forwardRevoke(srcif, packet, self.relations, self.sockets)
+        self.specialForward(srcif, packet, RVKE)
         return True
 
     def build_forwarding_table(self, forwardingInfo):
