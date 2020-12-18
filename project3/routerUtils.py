@@ -49,28 +49,6 @@ class RouterUtils:
         sock = sockets[ports[longestNetwork]]
         return sock
 
-
-    def filterRelationships(ports, srcif, relations):
-        keysToRemove = []
-        if relations[srcif] != CUST:
-          for key in ports:
-            if relations[ports[key]] != CUST:
-              keysToRemove.append(key)
-
-        for key in keysToRemove:
-          del ports[key]
-
-        return ports
-
-    def allPossible(dstAddress, routes):
-        ports = {}
-
-        for key in routes:
-          if ipaddress.ip_address(dstAddress) in ipaddress.ip_network(key):
-            ports[key] = routes.get(key)
-
-        return ports
-
     def sameAttributes(msg1, msg2):
         return ((msg1['src'] == msg2['src']) and
                 (msg1['msg']['localpref'] == msg2['msg']['localpref']) and

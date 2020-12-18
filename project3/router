@@ -59,10 +59,49 @@ class Router:
             self.sockets[network].connect(network)
             self.relations[network] = relation
 
+    def allPossible(self, dstAddress, routes):
+        ports = {}
+
+        print(routes)
+
+        for key in routes:
+          if ipaddress.ip_address(dstAddress) in ipaddress.ip_network(key):
+            ports[key] = routes.get(key)
+
+        return ports
+
+
+    def filterRelationships(self, ports, srcif, relations):
+        keysToRemove = []
+        if relations[srcif] != CUST:
+          for key in ports:
+            if relations[ports[key]] != CUST:
+              keysToRemove.append(key)
+
+        for key in keysToRemove:
+          del ports[key]
+
+        return ports
+
+    def getLongestPrefix(self, ports, sockets):
+        sock = None
+        longestPref = 0
+        longestNetwork = ""
+        for key in ports:
+          pref = int(key.split("/")[1])
+
+          if pref > longestPref:
+            longestPref = pref
+            longestNetwork = key
+        if longestPref == 0:
+          return None
+        sock = sockets[ports[longestNetwork]]
+        return sock
+
     def forward(self, srcif, packet):
-        ports = RouterUtils.allPossible(packet["dst"], self.routes)
-        ports = RouterUtils.filterRelationships(ports, srcif, self.relations)
-        sock = RouterUtils.getLongestPrefix(ports, self.sockets)
+        ports = self.allPossible(packet["dst"], self.routes)
+        ports = self.filterRelationships(ports, srcif, self.relations)
+        sock = self.getLongestPrefix(ports, self.sockets)
         if sock == None:
             RouterUtils.sendNoRoute(srcif, packet, self.sockets)
         else:
