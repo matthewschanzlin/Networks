@@ -129,19 +129,15 @@ class Router:
         RouterUtils.forwardRevoke(srcif, packet, self.relations, self.sockets)
         return True
 
-    def build_forwarding_table(forwardingInfo):
-        fowardTable = []
+    def build_forwarding_table(self, forwardingInfo):
+        forwardingTable = []
         for key in forwardingInfo:
-            network, cidr = key.split('/')
-            for i in range(len(forwardingInfo[key])):
-                netmask = forwardingInfo[key][i]['msg']['netmask']
-                peer = forwardingInfo[key][i]['src']
-                entry = {'network': network, 'netmask': forwardingInfo[key][i]['msg']['netmask'], 'peer': forwardingInfo[key][i]['src']}
-                fowardTable.append(entry)
-        return forwardTable
+            for item in forwardingInfo[key]:
+                forwardingTable.append({'network': key.split('/')[0], 'netmask': item['msg']['netmask'], 'peer': item['src']})
+        return forwardingTable
 
     def dump(self, srcif, packet):
-        forwardingTable = build_forwarding_table(self.forwardingInfo)
+        forwardingTable = self.build_forwarding_table(self.forwardingInfo)
         msg = {'src': packet['dst'], 'dst': packet['src'], 'type': 'table', 'msg': forwardingTable}
         self.sock_send(self.sockets[srcif], msg)
         return True
