@@ -5,17 +5,7 @@ from ipaddress import IPv4Network
 CUST = 'cust'
 
 class RouterUtils:
-    def sendPacketHelper(newPacket, key, sockets):
-        newPacket["dst"] = key
-        keyTemp = key.split(".")
-        keyTemp[-1] = "1"
-        keyTemp = ".".join(keyTemp)
-        newPacket["src"] = keyTemp
-        packetJSON = json.dumps(newPacket)
-        packetJSON = packetJSON.encode("ASCII")
-        sockets[key].send(packetJSON)
-
-        return True
+    format_packet = lambda srcif, p: {'src': '.'.join(srcif.split('.')[:-1] + ['1']), 'dst': p['src'], 'type': 'no route', 'msg': {}}
 
     def sameAttributes(msg1, msg2):
         return ((msg1['src'] == msg2['src']) and
@@ -161,34 +151,6 @@ class RouterUtils:
             maskVal += netmaskLength(maskArr[i])
 
         return address + "/" + str(maskVal)
-
-    def forwardUpdate(srcif, packet, asn, relations, sockets):
-        newPacket = {"type": "update", "src": None, "dst": None, "msg": packet["msg"]}
-        newPacket["msg"]["ASPath"].append(asn)
-
-        ogSrc = packet["src"]
-        if (relations[ogSrc] == CUST):
-          for key in sockets:
-            if key != srcif:
-              RouterUtils.sendPacketHelper(newPacket, key, sockets)
-
-        else:
-          for key in relations:
-            if (relations[key] == CUST) and (key != srcif):
-              RouterUtils.sendPacketHelper(newPacket, key, sockets)
-
-    def forwardRevoke(srcif, packet, relations, sockets):
-        newPacket = {"type": "revoke", "src": None, "dst": None, "msg": packet["msg"]}
-        ogSrc = packet["src"]
-
-        if (relations[ogSrc] == CUST):
-          for key in sockets:
-            if key != srcif:
-              RouterUtils.sendPacketHelper(newPacket, key, sockets)
-        else:
-          for key in relations:
-            if (relations[key] == CUST) and (key != srcif):
-              RouterUtils.sendPacketHelper(newPacket, key, sockets)
 
     def removePath(network, srcif, maskConvTable, routes, forwardingInfo):
         networkAddress = RouterUtils.calculateNetAddress(network["network"], network["netmask"], maskConvTable)
