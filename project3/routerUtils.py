@@ -65,27 +65,24 @@ class RouterUtils:
         fields = RouterUtils.check_match(info[0]['msg'], info[1]['msg'], ['localpref', 'selfOrigin', 'ASPath', 'origin'])
         return src and fields
 
-    def keysCoalesce(key1, key2):
-        ip1, cidr1 = key1.split("/")
-        ip2, cidr2 = key2.split("/")
-
-        comparison_bit = int(cidr1) - 1
+    def build_comparison_bits(key1, key2):
         comparison_bits = ['', '']
         comparator = '08b'
 
-        for part in ip1.split('.'):
+        for part in key1.split("/")[0].split('.'):
             comparison_bits[0] +=  format(int(part), comparator)
 
-        for part in ip2.split('.'):
+        for part in key2.split("/")[0].split('.'):
             comparison_bits[1] += format(int(part), comparator)
+        return comparison_bits
 
-        c1 = cidr1 == cidr2
-        print(comparison_bits)
+
+    def keysCoalesce(key1, key2):
+        comparison_bit = int(key1.split("/")[1]) - 1
+        comparison_bits = RouterUtils.build_comparison_bits(key1, key2)
+        c1 = key1.split("/")[1] == key2.split("/")[1]
         c2 = comparison_bits[0][comparison_bit] != comparison_bits[1][comparison_bit]
-
-        condition = c1 and c2
-
-        return condition
+        return c1 and c2
 
 
     def kkeysCoalesce(key1, key2):
