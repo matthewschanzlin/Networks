@@ -104,13 +104,14 @@ class Router:
         return False
 
     def getCoalesce(self, forwardingInfo):
-        for key1, value1 in forwardingInfo.items():
-          for key2, value2 in forwardingInfo.items():
-            if (self.canCoalesceKey(key1, key2)):
-              for msg1 in value1:
-                for msg2 in value2:
-                  if self.sameAttributes(msg1, msg2):
-                    return [key1, key2]
+        forwardingItems = forwardingInfo.items()
+        for i in range(0, len(forwardingItems)):
+            coalescablePairs = list(filter(lambda item: self.canCoalesceKey(i[0], item[0]), forwardingItems))
+            for pair in coalescablePairs:
+                for message in pair[0]:
+                    sameAttributeMessages = list(filter(lambda m: self.sameAttributes(message, m), pair[1]))
+                    if len(sameAttributeMessages) > 0:
+                        return sameAttributeMessages[0]
 
         return None
 
