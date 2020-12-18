@@ -36,6 +36,20 @@ class RouterUtils:
         fields = RouterUtils.check_match(info[0]['msg'], info[1]['msg'], ['localpref', 'selfOrigin', 'ASPath', 'origin'])
         return src and fields
 
+    def keysCoalesce(key1, key2):
+        ip1, cidr1 = key1.split("/")
+        ip2, cidr2 = key2.split("/")
+        if (cidr1 == cidr2):
+          bin1 = list(''.join(format(int(x), '08b') for x in ip1.split(".")))
+          bin2 = list(''.join(format(int(x), '08b') for x in ip2.split(".")))
+          idx = int(cidr1) - 1
+
+          if ((bin1[idx] == '1') and (bin2[idx] == '0')):
+            return True
+          if ((bin1[idx] == '0') and (bin2[idx] == '1')):
+            return True
+        return False
+
     def handleCoalesce(keys, routes, forwardingInfo):
         key1 = keys[0]
         key2 = keys[1]

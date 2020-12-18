@@ -76,20 +76,6 @@ class Router:
             self.sock_send(self.sockets[srcif], no_route)
         return False
 
-    def keysCoalesce(self, key1, key2):
-        ip1, cidr1 = key1.split("/")
-        ip2, cidr2 = key2.split("/")
-        if (cidr1 == cidr2):
-          bin1 = list(''.join(format(int(x), '08b') for x in ip1.split(".")))
-          bin2 = list(''.join(format(int(x), '08b') for x in ip2.split(".")))
-          idx = int(cidr1) - 1
-
-          if ((bin1[idx] == '1') and (bin2[idx] == '0')):
-            return True
-          if ((bin1[idx] == '0') and (bin2[idx] == '1')):
-            return True
-        return False
-
     def coalesce(self):
         matching_info = None
         forwardingItems = self.forwardingInfo.items()
