@@ -72,7 +72,7 @@ class Router:
         if longest > 0:
             self.sock_send(self.sockets[best], packet)
         else:
-            no_route = {'src': '.'.join(srcif.split('.')[:-1].append('1')), 'dst': packet['src'], 'type': 'no route', 'msg': {}}
+            no_route = {'src': '.'.join(srcif.split('.')[:-1] + ['1']), 'dst': packet['src'], 'type': 'no route', 'msg': {}}
             self.sock_send(self.sockets[srcif], no_route)
         return False
 
