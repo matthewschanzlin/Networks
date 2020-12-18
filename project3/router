@@ -59,40 +59,26 @@ class Router:
             self.sockets[network].connect(network)
             self.relations[network] = relation
 
-    def allPossible(self, dstAddress, routes):
-        f = lambda route: ipaddress.ip_address(dstAddress) in ipaddress.ip_network(route[0])
-        ports = list(filter(f, routes.items()))
-        return ports
-
-    def filterRelationships(self, ports, srcif, relations):
-        f = lambda port: relations[port[1]] == CUST
-        if relations[srcif] != CUST:
-            ports = list(filter(f, ports))
-        return ports
-
-    def getLongestPrefix(self, ports, sockets):
-        sock = None
-        longestPref = 0
-        longestNetwork = ""
-        for port in ports:
-          pref = int(port[0].split("/")[1])
-
-          if pref > longestPref:
-            longestPref = pref
-            best = port[1]
-        if longestPref == 0:
-          return None
-        sock = sockets[best]
-        return sock
-
     def forward(self, srcif, packet):
-        ports = self.allPossible(packet["dst"], self.routes)
-        ports = self.filterRelationships(ports, srcif, self.relations)
-        sock = self.getLongestPrefix(ports, self.sockets)
-        if sock == None:
-            RouterUtils.sendNoRoute(srcif, packet, self.sockets)
+        fil1 = lambda route: ipaddress.ip_address(packet["dst"]) in ipaddress.ip_network(route[0])
+        ports = list(filter(fil1, self.routes.items()))
+
+        fil2 = lambda port: self.relations[port[1]] == CUST
+        if self.relations[srcif] != CUST:
+            ports = list(filter(fil2, ports))
+
+        longest = 0
+        best = None
+        for port in ports:
+            if int(port[0].split("/")[1]) > longest:
+                longest = int(port[0].split("/")[1])
+                best = port[1]
+
+        if longest > 0:
+            RouterUtils.forwardData(self.sockets[best], packet)
         else:
-            RouterUtils.forwardData(sock, packet)
+            RouterUtils.sendNoRoute(srcif, packet, self.sockets)
+
         return False
 
     def coalesce(self):
