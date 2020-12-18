@@ -17,23 +17,6 @@ class RouterUtils:
 
         return True
 
-    def forwardData(sock, packet):
-        packetJSON = json.dumps(packet)
-        packetJSON = packetJSON.encode("ASCII")
-        sock.send(packetJSON)
-        return True
-
-    def sendNoRoute(srcif, packet, sockets):
-        srcifSplit = srcif.split(".")
-        srcifSplit[-1] = "1"
-        srcUs = ".".join(srcifSplit)
-        noRouteMessage = {"src": srcUs, "dst": packet["src"], "type": "no route", "msg": {}}
-        packetJSON = json.dumps(noRouteMessage)
-        packetJSON = packetJSON.encode("ASCII")
-        sockets[srcif].send(packetJSON)
-
-        return False
-
     def sameAttributes(msg1, msg2):
         return ((msg1['src'] == msg2['src']) and
                 (msg1['msg']['localpref'] == msg2['msg']['localpref']) and
@@ -54,7 +37,6 @@ class RouterUtils:
           if ((bin1[idx] == '0') and (bin2[idx] == '1')):
             return True
         return False
-
 
     def getCoalesce(forwardingInfo):
         for key1, value1 in forwardingInfo.items():
@@ -183,6 +165,7 @@ class RouterUtils:
     def forwardUpdate(srcif, packet, asn, relations, sockets):
         newPacket = {"type": "update", "src": None, "dst": None, "msg": packet["msg"]}
         newPacket["msg"]["ASPath"].append(asn)
+
         ogSrc = packet["src"]
         if (relations[ogSrc] == CUST):
           for key in sockets:
@@ -197,6 +180,7 @@ class RouterUtils:
     def forwardRevoke(srcif, packet, relations, sockets):
         newPacket = {"type": "revoke", "src": None, "dst": None, "msg": packet["msg"]}
         ogSrc = packet["src"]
+
         if (relations[ogSrc] == CUST):
           for key in sockets:
             if key != srcif:

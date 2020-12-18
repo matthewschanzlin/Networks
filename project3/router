@@ -61,18 +61,19 @@ class Router:
 
     def forward(self, srcif, packet):
         relation = lambda route: self.relations[srcif] == CUST or self.relations[route[1]] == CUST
-        ipmatch = lambda route: ipaddress.ip_address(packet["dst"]) in ipaddress.ip_network(route[0])
+        ipmatch = lambda route: ipaddress.ip_address(packet['dst']) in ipaddress.ip_network(route[0])
         ports = list(filter(lambda route: ipmatch(route) and relation(route), self.routes.items()))
         longest = 0
         best = None
         for port in ports:
-            if int(port[0].split("/")[1]) > longest:
-                longest = int(port[0].split("/")[1])
+            if int(port[0].split('/')[1]) > longest:
+                longest = int(port[0].split('/')[1])
                 best = port[1]
         if longest > 0:
-            RouterUtils.forwardData(self.sockets[best], packet)
+            self.sock_send(self.sockets[best], packet)
         else:
-            RouterUtils.sendNoRoute(srcif, packet, self.sockets)
+            no_route = {'src': '.'.join(srcif.split('.')[:-1].append('1')), 'dst': packet['src'], 'type': 'no route', 'msg': {}}
+            self.sock_send(self.sockets[srcif], no_route)
         return False
 
     def coalesce(self):
