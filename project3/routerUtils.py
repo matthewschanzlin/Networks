@@ -3,36 +3,36 @@ import ipaddress
 from ipaddress import IPv4Network
 
 CUST = 'cust'
+IGP = "IGP"
+EGP = "EGP"
+UNK = "UNK"
+MESG = "msg"
+NTWK = "network"
+NMSK = "netmask"
+ORIG = "origin"
+LPRF = "localpref"
+APTH = "ASPath"
+SORG = "selfOrigin"
+SRCE = "src"
+
+t1 = lambda p1, p2: p1[MESG][LPRF] > p2[MESG][LPRF]
+t2 = lambda p1, p2: p1[MESG][LPRF] < p2[MESG][LPRF]
+t3 = lambda p1, p2: p1[MESG][SORG] and not(p2[MESG][SORG])
+t4 = lambda p1, p2: not(p1[MESG][SORG]) and (p2[MESG][SORG])
+t5 = lambda p1, p2: len(p1[MESG][APTH]) < len(p2[MESG][APTH])
+t6 = lambda p1, p2: len(p1[MESG][APTH]) > len(p2[MESG][APTH])
+t7 = lambda p1, p2: (p1[MESG][ORIG] == IGP) and (not(p2[MESG][ORIG]) == IGP)
+t8 = lambda p1, p2: (not(p1[MESG][ORIG]) == IGP) and (p2[MESG][ORIG] == IGP)
+t9 = lambda p1, p2: (p1[MESG][ORIG] == EGP) and (not(p2[MESG][ORIG]) == EGP)
+t10 = lambda p1, p2: (not(p1[MESG][ORIG]) == EGP) and (p2[MESG][ORIG] == EGP)
+t11 = lambda p1, p2: (p1[MESG][ORIG] == UNK) and (not(p2[MESG][ORIG]) == UNK)
+t12 = lambda p1, p2: (not(p1[MESG][ORIG]) == UNK) and (p2[MESG][ORIG] == UNK)
+t13 = lambda p1, p2: ipaddress.IPv4Address(p1[SRCE]) < ipaddress.IPv4Address(current_path[SRCE])
 
 class RouterUtils:
     format_packet = lambda srcif, p: {'src': '.'.join(srcif.split('.')[:-1] + ['1']), 'dst': p['src'], 'type': 'no route', 'msg': {}}
-
-    IGP = "IGP"
-    EGP = "EGP"
-    UNK = "UNK"
-    MESG = "msg"
-    NTWK = "network"
-    NMSK = "netmask"
-    ORIG = "origin"
-    LPRF = "localpref"
-    APTH = "ASPath"
-    SORG = "selfOrigin"
-
-    t1 = lambda p1, p2: p1[MESG][LPRF] > p2[MESG][LPRF]
-    t2 = lambda p1, p2: p1[MESG][LPRF] < p2[MESG][LPRF]
-    t3 = lambda p1, p2: p1[MESG][SORG] and not(p2[MESG][SORG])
-    t4 = lambda p1, p2: not(p1[MESG][SORG]) and (p2[MESG][SORG])
-    t5 = lambda p1, p2: len(p1[MESG][APTH]) < len(p2[MESG][APTH])
-    t6 = lambda p1, p2: len(p1[MESG][APTH]) > len(p2[MESG][APTH])
-    t7 = lambda p1, p2: (p1[MESG][ORIG] == IGP) and (not(p2[MESG][ORIG]) == IGP)
-    t8 = lambda p1, p2: (not(p1[MESG][ORIG]) == IGP) and (p2[MESG][ORIG] == IGP)
-    t9 = lambda p1, p2: (p1[MESG][ORIG] == EGP) and (not(p2[MESG][ORIG]) == EGP)
-    t10 = lambda p1, p2: (not(p1[MESG][ORIG]) == EGP) and (p2[MESG][ORIG] == EGP)
-    t11 = lambda p1, p2: (p1[MESG][ORIG] == UNK) and (not(p2[MESG][ORIG]) == UNK)
-    t12 = lambda p1, p2: (not(p1[MESG][ORIG]) == UNK) and (p2[MESG][ORIG] == UNK)
-
-    true_conditions = lambda p1, p2: [t1(p1,p2), t3(p1,p2), t5(p1,p2), t7(p1,p2), t9(p1,p2), t11(p1,p2)]
-    false_conditions = lambda p1, p2: [t2(p1,p2), t4(p1,p2), t6(p1,p2), t8(p1,p2), t10(p1,p2), t12(p1,p2)]
+    true_conditions = lambda p1, p2: [t1(p1,p2), t3(p1,p2), t5(p1,p2), t7(p1,p2), t9(p1,p2), t11(p1,p2), t13(p1,p2)]
+    false_conditions = lambda p1, p2: [t2(p1,p2), t4(p1,p2), t6(p1,p2), t8(p1,p2), t10(p1,p2), t12(p1,p2), (not t13(p1,p2))]
 
     def specialForward(srcif, packet, type, sockets, relations):
         forward_packet = {'src': None, 'dst': None, 'type': type, 'msg': packet['msg']}
@@ -143,15 +143,12 @@ class RouterUtils:
         return True
 
     def isBestPath(next_path, current_path):
-        for i in range(0, len(true_conditions(next_path, current_path))):
-            if true_conditions(next_path, current_path)[i]:
+        for i in range(0, len(RouterUtils.true_conditions(next_path, current_path))):
+            if RouterUtils.true_conditions(next_path, current_path)[i]:
                 return True
-            elif false_conditions(next_path, current_path)[i]:
+            elif RouterUtils.false_conditions(next_path, current_path)[i]:
                 return False
-
-        newIP = ipaddress.IPv4Address(next_path['src'])
-        oldIP = ipaddress.IPv4Address(current_path['src'])
-        return (newIP < oldIP)
+        return False
 
     def configureNetmask(address, mask):
         netmaskLength = lambda s: {'0': 0, '128': 1, '192': 2, '224': 3, '240': 4, '248': 5, '252': 6, '254': 7, '255': 8}[s]
