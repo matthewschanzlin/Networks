@@ -30,15 +30,13 @@ class RouterUtils:
                 sockets[relation].send(json.dumps(packet).encode('ASCII'))
 
 
+    def check_match(item1, item2, matching_fields):
+        return len(list(filter(lambda field: item1[field] == item2[field], matching_fields))) == len(matching_fields)
 
-
-
-    def sameAttributes(msg1, msg2):
-        return ((msg1['src'] == msg2['src']) and
-                (msg1['msg']['localpref'] == msg2['msg']['localpref']) and
-                (msg1['msg']['selfOrigin'] == msg2['msg']['selfOrigin']) and
-                (msg1['msg']['ASPath'] == msg2['msg']['ASPath']) and
-                (msg1['msg']['origin'] == msg2['msg']['origin']))
+    def info_matching(info):
+        src = RouterUtils.check_match(info[0], info[1], ['src'])
+        fields = RouterUtils.check_match(info[0]['msg'], info[1]['msg'], ['localpref', 'selfOrigin', 'ASPath', 'origin'])
+        return src and fields
 
     def canCoalesceKey(key1, key2):
         ip1, cidr1 = key1.split("/")
@@ -60,7 +58,7 @@ class RouterUtils:
             if (RouterUtils.canCoalesceKey(key1, key2)):
               for msg1 in value1:
                 for msg2 in value2:
-                  if RouterUtils.sameAttributes(msg1, msg2):
+                  if RouterUtils.info_matching((msg1, msg2)):
                     return [key1, key2]
 
         return None
@@ -87,7 +85,7 @@ class RouterUtils:
 
         for i in range(len(updates1)):
           for j in range(len(updates2)):
-            if RouterUtils.sameAttributes(updates1[i], updates2[j]):
+            if RouterUtils.info_matching((updates1[i], updates2[j])):
               newMsg = updates1[i]
               newMsg['msg']['network'] = newIp
               newMsg['msg']['netmask'] = newNetmask
