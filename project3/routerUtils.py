@@ -14,8 +14,6 @@ LPRF = "localpref"
 APTH = "ASPath"
 SORG = "selfOrigin"
 SRCE = "src"
-DEST = "dst"
-UPDT = "update"
 
 t1 = lambda p1, p2: p1[MESG][LPRF] > p2[MESG][LPRF]
 t2 = lambda p1, p2: p1[MESG][LPRF] < p2[MESG][LPRF]
@@ -128,7 +126,10 @@ class RouterUtils:
         return False
 
     def placeUpdateInOrder(networkAddress, packet, routes, forwardingInfo):
-        newPacket = {"type": UPDT, SRC: packet[SRC], DEST: packet[DEST], MESG: packet[MESG]}
+        newPacket = {"type": "update", "src": packet["src"], "dst": packet["dst"],
+                     "msg": {"network": packet["msg"]["network"], "netmask": packet["msg"]["netmask"],
+                             "localpref": packet["msg"]["localpref"], "ASPath": packet["msg"]["ASPath"],
+                             "origin": packet["msg"]["origin"], "selfOrigin": packet["msg"]["selfOrigin"]}}
         if forwardingInfo.get(networkAddress) == None:
           forwardingInfo[networkAddress] = [newPacket]
           return True
