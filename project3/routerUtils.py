@@ -140,12 +140,12 @@ class RouterUtils:
         t12 = lambda p1, p2: (not(p1[MESG][ORIG]) == UNK) and (p2[MESG][ORIG] == UNK)
 
         true_conditions = lambda p1, p2: [t1(p1,p2), t3(p1,p2), t5(p1,p2), t7(p1,p2), t9(p1,p2), t11(p1,p2)]
-        false_conditions = lambda p1, p2 [t2(p1,p2), t4(p1,p2), t6(p1,p2), t8(p1,p2), t10(p1,p2), v12(p1,p2)]
+        false_conditions = lambda p1, p2: [t2(p1,p2), t4(p1,p2), t6(p1,p2), t8(p1,p2), t10(p1,p2), t12(p1,p2)]
 
-        for i in range(0, len(true_conditions)):
-            if true_conditions[i]:
+        for i in range(0, len(true_conditions(newPacket, oldPacket))):
+            if true_conditions(newPacket, oldPacket)[i]:
                 return True
-            elif false_conditions[i]:
+            elif false_conditions(newPacket, oldPacket)[i]:
                 return False
 
         newIP = ipaddress.IPv4Address(newPacket['src'])
