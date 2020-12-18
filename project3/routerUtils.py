@@ -69,7 +69,7 @@ class RouterUtils:
         ip1, cidr1 = key1.split("/")
         ip2, cidr2 = key2.split("/")
 
-        comparison_bit = int(ip1.split("/")[1]) - 1
+        comparison_bit = int(cidr1) - 1
         comparison_bits = ['', '']
         comparator = '08b'
 
@@ -88,7 +88,7 @@ class RouterUtils:
         return condition
 
 
-    def keysCoalesce(key1, key2):
+    def kkeysCoalesce(key1, key2):
         ip1, cidr1 = key1.split("/")
         ip2, cidr2 = key2.split("/")
         if (cidr1 == cidr2):
