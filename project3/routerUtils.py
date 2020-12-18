@@ -130,10 +130,7 @@ class RouterUtils:
 
     def formatUpdate(packet):
         update = {'src': packet[SRCE], 'dst': packet[DEST], 'type': UPDT}
-        update['msg'] = {'network': packet[MESG][NTWK], 'netmask': packet[MESG][NMSK],
-                'localpref': packet[MESG][LPRF], 'ASPath': packet[MESG][APTH],
-                'origin': packet[MESG][ORIG], 'selfOrigin': packet[MESG][SORG]}
-
+        update[MESG] = {'localpref': packet[MESG][LPRF], 'ASPath': packet[MESG][APTH], 'network': packet[MESG][NTWK], 'netmask': packet[MESG][NMSK], 'origin': packet[MESG][ORIG], 'selfOrigin': packet[MESG][SORG]}
         return update
 
     def insertUpdate(packet, address, forwardingInfo):
