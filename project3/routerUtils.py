@@ -27,7 +27,7 @@ class RouterUtils:
             if (relations[relation] == CUST) and (relation != srcif):
                 packet['src'] = '.'.join(relation.split('.')[:-1] + ['1'])
                 packet['dst'] = relation
-                sockets[sock].send(json.dumps(packet).encode('ASCII'))
+                sockets[relation].send(json.dumps(packet).encode('ASCII'))
 
 
 
