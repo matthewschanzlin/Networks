@@ -103,7 +103,7 @@ class Router:
             return True
         return False
 
-    def getCoalesce(forwardingInfo):
+    def getCoalesce(self, forwardingInfo):
         for key1, value1 in forwardingInfo.items():
           for key2, value2 in forwardingInfo.items():
             if (self.canCoalesceKey(key1, key2)):
@@ -124,7 +124,7 @@ class Router:
 
     def coalesce(self):
         while(True):
-            aggregate = RouterUtils.getCoalesce(self.forwardingInfo)
+            aggregate = self.getCoalesce(self.forwardingInfo)
             if (aggregate == None):
                 break
             RouterUtils.handleCoalesce(aggregate[0], aggregate[1], self.routes, self.forwardingInfo)
