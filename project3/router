@@ -146,30 +146,21 @@ class Router:
         return True
 
     def handle_packet(self, srcif, packet):
-        msgType = packet['type']
-        if (msgType == 'update'):
-            self.update(srcif, packet)
-            return True
-
-        if (msgType == 'data'):
+        if packet['type'] == DATA:
             self.forward(srcif, packet)
-            return True
-
-        if (msgType == 'dump'):
+        elif packet['type'] == DUMP:
             self.dump(packet, srcif)
-            return True
-
-        if (msgType == 'revoke'):
+        elif packet['type'] == UPDT:
+            self.update(srcif, packet)
+        elif packet['type'] == RVKE:
             self.revoke(packet, srcif)
-            return True
-
-        return False
+        else:
+            return False
+        return True
 
     def send_error(self, conn, msg):
-        msg = json.dumps(msg)
-        msg = msg.encode("ASCII")
-        conn.send(msg)
-        return False
+        conn.send(json.dumps(msg).encode('ASCII'))
+        return
 
     def run(self):
         while True:
