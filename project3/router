@@ -128,13 +128,11 @@ class Router:
             for k in range(len(toDelete)):
                 self.updates[srcif].pop(toDelete[k])
 
-        packets = []
-        for packets in self.updates.values():
-            packets += packets
-            
-        for packet in packets:
-            self.updateHelper(packet)
-            self.coalesce()
+        
+        for key in self.updates:
+            for val in self.updates[key]:
+                self.updateHelper(val)
+                self.coalesce()
 
         RouterUtils.specialForward(srcif, packet, RVKE, self.sockets, self.relations)
         return True
