@@ -123,11 +123,10 @@ class Router:
 
 
     def coalesce(self):
-        while(True):
-            aggregate = self.getCoalesce(self.forwardingInfo)
-            if (aggregate == None):
-                break
+        aggregate = self.getCoalesce(self.forwardingInfo)
+        if aggregate:
             RouterUtils.handleCoalesce(aggregate[0], aggregate[1], self.routes, self.forwardingInfo)
+            self.coalesce()
         return False
 
     def update(self, srcif, packet):
