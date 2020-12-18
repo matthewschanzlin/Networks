@@ -131,18 +131,11 @@ class Router:
         return True
 
     def dump(self, packet, srcif):
-        fowardTable = []
-        for key in self.routesAndUpdates:
-            network, cidr = key.split("/")
-            for i in range(len(self.routesAndUpdates[key])):
-                netmask = self.routesAndUpdates[key][i]["msg"]["netmask"]
-                peer = self.routesAndUpdates[key][i]["src"]
-                entry = {"network": network, "netmask": netmask, "peer": peer}
-                fowardTable.append(entry)
-        dumpMsg = {"src": packet["dst"], "dst": packet["src"], "type": "table", "msg": fowardTable}
-        packetJSON = json.dumps(dumpMsg)
-        packetJSON = packetJSON.encode("ASCII")
-        self.sockets[srcif].send(packetJSON)
+        neighbor = packet['src']
+        local = packet['dst']
+        message = {'src': local, 'dst': neighbor, 'type': TABL, 'msg': self.routes}
+        conn = self.sockets[neighbor]
+        conn.send(json.dumps(message).encode())
         return True
 
     def handle_packet(self, srcif, packet):
