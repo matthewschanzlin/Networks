@@ -60,9 +60,9 @@ class Router:
             self.relations[network] = relation
 
     def forward(self, srcif, packet):
-        relation = self.relations[srcif] == CUST or self.relations[port[1]] == CUST
-        ipmatch = ipaddress.ip_address(packet["dst"]) in ipaddress.ip_network(route[0])
-        ports = list(filter(lambda route: ipmatch and relation, self.routes.items()))
+        relation = lambda route: self.relations[srcif] == CUST or self.relations[route[1]] == CUST
+        ipmatch = lambda route: ipaddress.ip_address(packet["dst"]) in ipaddress.ip_network(route[0])
+        ports = list(filter(lambda route: ipmatch(route) and relation(route), self.routes.items()))
         longest = 0
         best = None
         for port in ports:
