@@ -66,18 +66,21 @@ class RouterUtils:
         return src and fields
 
     def keysCoalesce(key1, key2):
-        ip1, cidr1 = key1.split("/")
-        ip2, cidr2 = key2.split("/")
-        bin1 = list(''.join(format(int(x), '08b') for x in ip1.split(".")))
-        bin2 = list(''.join(format(int(x), '08b') for x in ip2.split(".")))
-        idx = int(cidr1) - 1
+        comparison_bit = int(key1.split("/")[1]) - 1
+        comparison_bits = ('', '')
+        comparator = '08b'
+
+        for part in key1.split('.')[0].split('.'):
+            comparison_bits[0] +=  format(int(part), comparator)
+
+        for part in key2.split('.')[0].split('.'):
+            comparison_bits[1] += format(int(part), comparator)
 
         c1 = cidr1 == cidr2
-        c2 = (bin1[idx] == '1') and (bin2[idx] == '0')
-        c3 = (bin1[idx] == '0') and (bin2[idx] == '1')
+        c2 = comparison_bits[0][comparison_bit] != comparison_bits[1][comparison_bit]
 
-        condition = c1 and (c2 or c3)
-        
+        condition = c1 and c2
+
         return condition
 
     def handleCoalesce(keys, routes, forwardingInfo):
