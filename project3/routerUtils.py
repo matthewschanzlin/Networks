@@ -14,6 +14,8 @@ LPRF = "localpref"
 APTH = "ASPath"
 SORG = "selfOrigin"
 SRCE = "src"
+DEST = "dst"
+UPDT = "update"
 
 t1 = lambda p1, p2: p1[MESG][LPRF] > p2[MESG][LPRF]
 t2 = lambda p1, p2: p1[MESG][LPRF] < p2[MESG][LPRF]
@@ -127,10 +129,10 @@ class RouterUtils:
 
 
     def formatUpdate(packet):
-        update = {'src': packet['src'], 'dst': packet['dst'], 'type': 'update'}
-        update['msg'] = {"network": packet["msg"]["network"], "netmask": packet["msg"]["netmask"],
-                "localpref": packet["msg"]["localpref"], "ASPath": packet["msg"]["ASPath"],
-                "origin": packet["msg"]["origin"], "selfOrigin": packet["msg"]["selfOrigin"]}
+        update = {'src': packet[SRCE], 'dst': packet[DEST], 'type': UPDT}
+        update['msg'] = {'network': packet[MESG][NTWK], 'netmask': packet[MESG][NMSK],
+                'localpref': packet[MESG][LPRF], 'ASPath': packet[MESG][APTH],
+                'origin': packet[MESG][ORIG], 'selfOrigin': packet[MESG][SORG]}
 
         return update
 
@@ -149,11 +151,11 @@ class RouterUtils:
         return True
 
     def placeUpdateInOrder(address, packet, routes, forwardingInfo):
-        update = RouterUtils.update(packet)
+        update = RouterUtils.formatUpdate(packet)
         check = lambda fi, na, u: [u] if na not in fi else fi[na]
 
         if address not in forwardingInfo:
-            forwardingInfo[networkAddress] = [update]
+            forwardingInfo[address] = [update]
         else:
             RouterUtils.insertUpdate(update, address, forwardingInfo)
 
