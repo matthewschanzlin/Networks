@@ -91,7 +91,8 @@ class Router:
             self.coalesce()
         return False
 
-    def updateHelper(self, updatedRoute, packet):
+    def updateHelper(self, packet):
+        updatedRoute = RouterUtils.configureNetmask(packet[MESG][NTWK], packet[MESG][NMSK])
         if (self.routes.get(updatedRoute) == None):
             self.routes[updatedRoute] = packet['src']
         elif (RouterUtils.chooseNextPath(packet, self.forwardingInfo[updatedRoute][0])):
@@ -99,10 +100,10 @@ class Router:
         RouterUtils.handleUpdate(updatedRoute, packet, self.routes, self.forwardingInfo)
 
     def update(self, srcif, packet):
-        self.updates[srcif] = [packet] if srcif not in self.updates else self.upates[srcif] + [packet]
+        self.updates[srcif] = [packet] if srcif not in self.updates else self.updates[srcif] + [packet]
         updatedRoute = RouterUtils.configureNetmask(packet['msg']['network'], packet['msg']['netmask'])
 
-        self.updateHelper(updatedRoute, packet)
+        self.updateHelper(packet)
         packet['msg']['ASPath'] = packet['msg']['ASPath'] + [args.asn]
         RouterUtils.specialForward(srcif, packet, UPDT, self.sockets, self.relations)
 
@@ -130,9 +131,7 @@ class Router:
 
         for key in self.updates:
             for val in self.updates[key]:
-                networkAddress = RouterUtils.configureNetmask(val["msg"]["network"], val["msg"]["netmask"])
-
-                self.updateHelper(networkAddress, val)
+                self.updateHelper(val)
                 self.coalesce()
 
         RouterUtils.specialForward(srcif, packet, RVKE, self.sockets, self.relations)
