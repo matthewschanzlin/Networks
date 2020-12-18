@@ -166,8 +166,8 @@ class Router:
             self.routes[networkAddress] = packet['src']
         RouterUtils.placeUpdateInOrder(networkAddress, packet, self.routes, self.forwardingInfo)
 
-
-        packet['msg']['ASPATH'] = packet['msg']['ASPATH'] + args.asn
+        print(packet['msg'])
+        packet['msg']['ASPath'] = packet['msg']['ASPath'] + [args.asn]
         self.specialForward(srcif, packet, UPDT)
 
 
