@@ -7,7 +7,6 @@ CUST = 'cust'
 class RouterUtils:
     format_packet = lambda srcif, p: {'src': '.'.join(srcif.split('.')[:-1] + ['1']), 'dst': p['src'], 'type': 'no route', 'msg': {}}
 
-
     def specialForward(srcif, packet, type, sockets, relations):
         forward_packet = {'src': None, 'dst': None, 'type': type, 'msg': packet['msg']}
         if (relations[packet['src']] == CUST):
@@ -29,7 +28,6 @@ class RouterUtils:
                 packet['dst'] = relation
                 sockets[relation].send(json.dumps(packet).encode('ASCII'))
 
-
     def check_match(item1, item2, matching_fields):
         return len(list(filter(lambda field: item1[field] == item2[field], matching_fields))) == len(matching_fields)
 
@@ -37,31 +35,6 @@ class RouterUtils:
         src = RouterUtils.check_match(info[0], info[1], ['src'])
         fields = RouterUtils.check_match(info[0]['msg'], info[1]['msg'], ['localpref', 'selfOrigin', 'ASPath', 'origin'])
         return src and fields
-
-    def canCoalesceKey(key1, key2):
-        ip1, cidr1 = key1.split("/")
-        ip2, cidr2 = key2.split("/")
-        if (cidr1 == cidr2):
-          bin1 = list(''.join(format(int(x), '08b') for x in ip1.split(".")))
-          bin2 = list(''.join(format(int(x), '08b') for x in ip2.split(".")))
-          idx = int(cidr1) - 1
-
-          if ((bin1[idx] == '1') and (bin2[idx] == '0')):
-            return True
-          if ((bin1[idx] == '0') and (bin2[idx] == '1')):
-            return True
-        return False
-
-    def getCoalesce(forwardingInfo):
-        for key1, value1 in forwardingInfo.items():
-          for key2, value2 in forwardingInfo.items():
-            if (RouterUtils.canCoalesceKey(key1, key2)):
-              for msg1 in value1:
-                for msg2 in value2:
-                  if RouterUtils.info_matching((msg1, msg2)):
-                    return [key1, key2]
-
-        return None
 
     def handleCoalesce(keys, routes, forwardingInfo):
         key1 = keys[0]
