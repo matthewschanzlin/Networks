@@ -65,39 +65,23 @@ class RouterUtils:
         fields = RouterUtils.check_match(info[0]['msg'], info[1]['msg'], ['localpref', 'selfOrigin', 'ASPath', 'origin'])
         return src and fields
 
-    def build_comparison_bits(key1, key2):
+    def build_comparison_bits(bits):
         comparison_bits = ['', '']
         comparator = '08b'
 
-        for part in key1.split("/")[0].split('.'):
+        for part in bits[0].split("/")[0].split('.'):
             comparison_bits[0] +=  format(int(part), comparator)
 
-        for part in key2.split("/")[0].split('.'):
+        for part in bits[1].split("/")[0].split('.'):
             comparison_bits[1] += format(int(part), comparator)
         return comparison_bits
 
-
-    def keysCoalesce(key1, key2):
-        comparison_bit = int(key1.split("/")[1]) - 1
-        comparison_bits = RouterUtils.build_comparison_bits(key1, key2)
-        c1 = key1.split("/")[1] == key2.split("/")[1]
+    def coalescableAddresses(address1, address2):
+        comparison_bit = int(address1.split("/")[1]) - 1
+        comparison_bits = RouterUtils.build_comparison_bits([address1, address2])
+        c1 = address1.split("/")[1] == address2.split("/")[1]
         c2 = comparison_bits[0][comparison_bit] != comparison_bits[1][comparison_bit]
         return c1 and c2
-
-
-    def kkeysCoalesce(key1, key2):
-        ip1, cidr1 = key1.split("/")
-        ip2, cidr2 = key2.split("/")
-        if (cidr1 == cidr2):
-          bin1 = list(''.join(format(int(x), '08b') for x in ip1.split(".")))
-          bin2 = list(''.join(format(int(x), '08b') for x in ip2.split(".")))
-          idx = int(cidr1) - 1
-
-          if ((bin1[idx] == '1') and (bin2[idx] == '0')):
-            return True
-          if ((bin1[idx] == '0') and (bin2[idx] == '1')):
-            return True
-        return False
 
     def handleCoalesce(keys, routes, forwardingInfo):
         key1 = keys[0]
