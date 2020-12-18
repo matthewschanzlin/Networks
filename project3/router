@@ -76,6 +76,52 @@ class Router:
             self.sock_send(self.sockets[srcif], no_route)
         return False
 
+
+
+
+
+
+    def check_match(self, item1, item2, matching_fields):
+        return len(list(filter(lambda field: item1[field] == item2[field], matching_fields))) == len(matching_fields)
+
+    def sameAttributes(self, msg1, msg2):
+        src = self.check_match(msg1, msg2, ['src'])
+        fields = self.check_match(msg1['msg'], msg2['msg'], ['localpref', 'selfOrigin', 'ASPath', 'origin'])
+        return src and fields
+
+    def canCoalesceKey(self, key1, key2):
+        ip1, cidr1 = key1.split("/")
+        ip2, cidr2 = key2.split("/")
+        if (cidr1 == cidr2):
+          bin1 = list(''.join(format(int(x), '08b') for x in ip1.split(".")))
+          bin2 = list(''.join(format(int(x), '08b') for x in ip2.split(".")))
+          idx = int(cidr1) - 1
+
+          if ((bin1[idx] == '1') and (bin2[idx] == '0')):
+            return True
+          if ((bin1[idx] == '0') and (bin2[idx] == '1')):
+            return True
+        return False
+
+    def getCoalesce(forwardingInfo):
+        for key1, value1 in forwardingInfo.items():
+          for key2, value2 in forwardingInfo.items():
+            if (self.canCoalesceKey(key1, key2)):
+              for msg1 in value1:
+                for msg2 in value2:
+                  if self.sameAttributes(msg1, msg2):
+                    return [key1, key2]
+
+        return None
+
+
+
+
+
+
+
+
+
     def coalesce(self):
         while(True):
             aggregate = RouterUtils.getCoalesce(self.forwardingInfo)
