@@ -93,9 +93,8 @@ class Router:
 
     def updateHelper(self, packet):
         updatedRoute = RouterUtils.configureNetmask(packet[MESG][NTWK], packet[MESG][NMSK])
-        if (self.routes.get(updatedRoute) == None):
-            self.routes[updatedRoute] = packet['src']
-        elif (RouterUtils.chooseNextPath(packet, self.forwardingInfo[updatedRoute][0])):
+        shouldUpdate = updatedRoute not in self.routes or RouterUtils.chooseNextPath(packet, self.forwardingInfo[updatedRoute][0])
+        if shouldUpdate:
             self.routes[updatedRoute] = packet['src']
         RouterUtils.handleUpdate(updatedRoute, packet, self.routes, self.forwardingInfo)
 
