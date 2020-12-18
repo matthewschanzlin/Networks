@@ -125,20 +125,37 @@ class RouterUtils:
               return True
         return False
 
-    def placeUpdateInOrder(networkAddress, packet, routes, forwardingInfo):
-        newPacket = {"type": "update", "src": packet["src"], "dst": packet["dst"],
-                     "msg": {"network": packet["msg"]["network"], "netmask": packet["msg"]["netmask"],
-                             "localpref": packet["msg"]["localpref"], "ASPath": packet["msg"]["ASPath"],
-                             "origin": packet["msg"]["origin"], "selfOrigin": packet["msg"]["selfOrigin"]}}
-        if forwardingInfo.get(networkAddress) == None:
-          forwardingInfo[networkAddress] = [newPacket]
-          return True
 
-        for i in range(len(forwardingInfo[networkAddress])):
-          if RouterUtils.chooseNextPath(newPacket, forwardingInfo[networkAddress][i]):
-            forwardingInfo[networkAddress].insert(i, newPacket)
-            return True
-        forwardingInfo[networkAddress].append(newPacket)
+    def formatUpdate(packet):
+        update = {'src': packet['src'], 'dst': packet['dst'], 'type': 'update'}
+        update['msg'] = {"network": packet["msg"]["network"], "netmask": packet["msg"]["netmask"],
+                "localpref": packet["msg"]["localpref"], "ASPath": packet["msg"]["ASPath"],
+                "origin": packet["msg"]["origin"], "selfOrigin": packet["msg"]["selfOrigin"]}
+
+        return update
+
+    def insertUpdate(packet, address, forwardingInfo):
+        notInserted = True
+        index = 0
+        while notInserted and index < len(forwardingInfo):
+            if RouterUtils.chooseNextPath(update, forwardingInfo[address][index]):
+                forwardingInfo[address].insert(index, update)
+                notInserted = False
+            else:
+                index += 1
+
+        if notInserted:
+            forwardingInfo[address].append(update)
+        return True
+
+    def placeUpdateInOrder(address, packet, routes, forwardingInfo):
+        update = RouterUtils.update(packet)
+        check = lambda fi, na, u: [u] if na not in fi else fi[na]
+
+        if address not in forwardingInfo:
+            forwardingInfo[networkAddress] = [update]
+        else:
+            RouterUtils.insertUpdate(update, address, forwardingInfo)
 
         return True
 
