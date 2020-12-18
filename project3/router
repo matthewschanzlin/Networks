@@ -117,8 +117,10 @@ class Router:
                     self.updates[srcif].pop(index)
                 else:
                     index += 1
-        for val in self.updates.values():
-            for packet in val:
+
+        for key in self.updates:
+            item = self.updates[key]
+            for packet in item:
                 self.updateHelper(packet)
                 self.coalesce()
 
