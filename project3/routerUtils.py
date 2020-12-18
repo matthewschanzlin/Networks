@@ -14,6 +14,8 @@ LPRF = "localpref"
 APTH = "ASPath"
 SORG = "selfOrigin"
 SRCE = "src"
+DEST = "dst"
+UPDT = "update"
 
 t1 = lambda p1, p2: p1[MESG][LPRF] > p2[MESG][LPRF]
 t2 = lambda p1, p2: p1[MESG][LPRF] < p2[MESG][LPRF]
@@ -27,7 +29,7 @@ t9 = lambda p1, p2: (p1[MESG][ORIG] == EGP) and (not(p2[MESG][ORIG]) == EGP)
 t10 = lambda p1, p2: (not(p1[MESG][ORIG]) == EGP) and (p2[MESG][ORIG] == EGP)
 t11 = lambda p1, p2: (p1[MESG][ORIG] == UNK) and (not(p2[MESG][ORIG]) == UNK)
 t12 = lambda p1, p2: (not(p1[MESG][ORIG]) == UNK) and (p2[MESG][ORIG] == UNK)
-t13 = lambda p1, p2: ipaddress.IPv4Address(p1[SRCE]) < ipaddress.IPv4Address(current_path[SRCE])
+t13 = lambda p1, p2: ipaddress.IPv4Address(p1[SRCE]) < ipaddress.IPv4Address(p2[SRCE])
 
 class RouterUtils:
     format_packet = lambda srcif, p: {'src': '.'.join(srcif.split('.')[:-1] + ['1']), 'dst': p['src'], 'type': 'no route', 'msg': {}}
@@ -126,23 +128,20 @@ class RouterUtils:
         return False
 
     def placeUpdateInOrder(networkAddress, packet, routes, forwardingInfo):
-        newPacket = {"type": "update", "src": packet["src"], "dst": packet["dst"],
-                     "msg": {"network": packet["msg"]["network"], "netmask": packet["msg"]["netmask"],
-                             "localpref": packet["msg"]["localpref"], "ASPath": packet["msg"]["ASPath"],
-                             "origin": packet["msg"]["origin"], "selfOrigin": packet["msg"]["selfOrigin"]}}
+        newPacket = {"type": UPDT, SRC: packet[SRC], DEST: packet[DEST], MESG: packet[MESG]}
         if forwardingInfo.get(networkAddress) == None:
           forwardingInfo[networkAddress] = [newPacket]
           return True
 
         for i in range(len(forwardingInfo[networkAddress])):
-          if RouterUtils.isBestPath(newPacket, forwardingInfo[networkAddress][i]):
+          if RouterUtils.chooseNextPath(newPacket, forwardingInfo[networkAddress][i]):
             forwardingInfo[networkAddress].insert(i, newPacket)
             return True
         forwardingInfo[networkAddress].append(newPacket)
 
         return True
 
-    def isBestPath(next_path, current_path):
+    def chooseNextPath(next_path, current_path):
         for i in range(0, len(RouterUtils.true_conditions(next_path, current_path))):
             if RouterUtils.true_conditions(next_path, current_path)[i]:
                 return True

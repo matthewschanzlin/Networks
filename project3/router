@@ -101,7 +101,7 @@ class Router:
 
         if (self.routes.get(networkAddress) == None):
             self.routes[networkAddress] = packet['src']
-        elif (RouterUtils.isBestPath(packet, self.forwardingInfo[networkAddress][0])):
+        elif (RouterUtils.chooseNextPath(packet, self.forwardingInfo[networkAddress][0])):
             self.routes[networkAddress] = packet['src']
         RouterUtils.placeUpdateInOrder(networkAddress, packet, self.routes, self.forwardingInfo)
 
@@ -137,7 +137,7 @@ class Router:
 
                 if (self.routes.get(networkAddress) == None):
                     self.routes[networkAddress] = val["src"]
-                elif (RouterUtils.isBestPath(val, self.forwardingInfo[networkAddress][0])):
+                elif (RouterUtils.chooseNextPath(val, self.forwardingInfo[networkAddress][0])):
                     self.routes[networkAddress] = val["src"]
                 RouterUtils.placeUpdateInOrder(networkAddress, val, self.routes, self.forwardingInfo)
                 self.coalesce()
