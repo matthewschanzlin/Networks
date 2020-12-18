@@ -116,54 +116,37 @@ class RouterUtils:
         return True
 
     def isBestPath(newPacket, oldPacket):
-        msg = 'msg'
-        localpref = 'localpref'
-        selfOrigin = 'selfOrigin'
-        ASPATH = 'ASPath'
-        origin = 'origin'
+        MESG = "msg"
+        ORIG = "origin"
+        LPRF = "localpref"
+        APTH = "ASPath"
+        SORG = "selfOrigin"
 
-        t1 = (newPacket[msg][localpref] > oldPacket[msg][localpref])
-        t2 = (newPacket[msg][localpref] < oldPacket[msg][localpref])
-        t3 = (newPacket[msg][selfOrigin] and not(oldPacket[msg][selfOrigin]))
-        t4 = (not(newPacket[msg][selfOrigin]) and (oldPacket[msg][selfOrigin]))
-        t5 = (len(newPacket[msg][ASPATH]) < len(oldPacket[msg][ASPATH]))
-        t6 = (len(newPacket[msg][ASPATH]) > len(oldPacket[msg][ASPATH]))
-        t7 = ((newPacket[msg][origin] == "IGP") and (not(oldPacket[msg][origin]) == "IGP"))
-        t8 = ((not(newPacket[msg][origin]) == "IGP") and (oldPacket[msg][origin] == "IGP"))
-        t9 = ((newPacket[msg][origin] == "EGP") and (not(oldPacket[msg][origin]) == "EGP"))
-        t10 = ((not(newPacket[msg][origin]) == "EGP") and (oldPacket[msg][origin] == "EGP"))
-        t11 = ((newPacket[msg][origin] == "UNK") and (not(oldPacket[msg][origin]) == "UNK"))
-        t12 = ((not(newPacket[msg][origin]) == "UNK") and (oldPacket[msg][origin] == "UNK"))
+        IGP = "IGP"
+        EGP = "EGP"
+        UNK = "UNK"
 
-        if t1:
-            return True
-        elif t2:
-            return False
+        t1 = lambda p1, p2: p1[MESG][LPRF] > p2[MESG][LPRF]
+        t2 = lambda p1, p2: p1[MESG][LPRF] < p2[MESG][LPRF]
+        t3 = lambda p1, p2: p1[MESG][SORG] and not(p2[MESG][SORG])
+        t4 = lambda p1, p2: not(p1[MESG][SORG]) and (p2[MESG][SORG])
+        t5 = lambda p1, p2: len(p1[MESG][APTH]) < len(p2[MESG][APTH])
+        t6 = lambda p1, p2: len(p1[MESG][APTH]) > len(p2[MESG][APTH])
+        t7 = lambda p1, p2: (p1[MESG][ORIG] == IGP) and (not(p2[MESG][ORIG]) == IGP)
+        t8 = lambda p1, p2: (not(p1[MESG][ORIG]) == IGP) and (p2[MESG][ORIG] == IGP)
+        t9 = lambda p1, p2: (p1[MESG][ORIG] == EGP) and (not(p2[MESG][ORIG]) == EGP)
+        t10 = lambda p1, p2: (not(p1[MESG][ORIG]) == EGP) and (p2[MESG][ORIG] == EGP)
+        t11 = lambda p1, p2: (p1[MESG][ORIG] == UNK) and (not(p2[MESG][ORIG]) == UNK)
+        t12 = lambda p1, p2: (not(p1[MESG][ORIG]) == UNK) and (p2[MESG][ORIG] == UNK)
 
-        if t3:
-            return True
-        elif t4:
-            return False
+        true_conditions = lambda p1, p2: [t1(p1,p2), t3(p1,p2), t5(p1,p2), t7(p1,p2), t9(p1,p2), t11(p1,p2)]
+        false_conditions = lambda p1, p2 [t2(p1,p2), t4(p1,p2), t6(p1,p2), t8(p1,p2), t10(p1,p2), v12(p1,p2)]
 
-        if t5:
-            return True
-        elif t6:
-            return False
-
-        if t7:
-            return True
-        elif t8:
-            return False
-
-        if t9:
-            return True
-        elif t10:
-            return False
-
-        if t11:
-            return True
-        elif t12:
-            return False
+        for i in range(0, len(true_conditions)):
+            if true_conditions[i]:
+                return True
+            elif false_conditions[i]:
+                return False
 
         newIP = ipaddress.IPv4Address(newPacket['src'])
         oldIP = ipaddress.IPv4Address(oldPacket['src'])
