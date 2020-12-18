@@ -60,42 +60,38 @@ class Router:
             self.relations[network] = relation
 
     def allPossible(self, dstAddress, routes):
-        ports = {}
-
-        print(routes)
-
-        for key in routes:
-          if ipaddress.ip_address(dstAddress) in ipaddress.ip_network(key):
-            ports[key] = routes.get(key)
-
+        f = lambda route: ipaddress.ip_address(dstAddress) in ipaddress.ip_network(route[0])
+        ports = list(filter(f, routes.items()))
         return ports
 
 
     def filterRelationships(self, ports, srcif, relations):
-        keysToRemove = []
+        keysToRemove = {}
         if relations[srcif] != CUST:
-          for key in ports:
-            if relations[ports[key]] != CUST:
-              keysToRemove.append(key)
+          for port in ports:
+            if relations[port[1]] != CUST:
+              keysToRemove[port[0]] = True
 
-        for key in keysToRemove:
-          del ports[key]
+        finalPorts = []
+        for port in ports:
+          if port[0] not in keysToRemove:
+              finalPorts.append(port)
 
-        return ports
+        return finalPorts
 
     def getLongestPrefix(self, ports, sockets):
         sock = None
         longestPref = 0
         longestNetwork = ""
-        for key in ports:
-          pref = int(key.split("/")[1])
+        for port in ports:
+          pref = int(port[0].split("/")[1])
 
           if pref > longestPref:
             longestPref = pref
-            longestNetwork = key
+            best = port[1]
         if longestPref == 0:
           return None
-        sock = sockets[ports[longestNetwork]]
+        sock = sockets[best]
         return sock
 
     def forward(self, srcif, packet):

@@ -34,21 +34,6 @@ class RouterUtils:
 
         return False
 
-    def getLongestPrefix(ports, sockets):
-        sock = None
-        longestPref = 0
-        longestNetwork = ""
-        for key in ports:
-          pref = int(key.split("/")[1])
-
-          if pref > longestPref:
-            longestPref = pref
-            longestNetwork = key
-        if longestPref == 0:
-          return None
-        sock = sockets[ports[longestNetwork]]
-        return sock
-
     def sameAttributes(msg1, msg2):
         return ((msg1['src'] == msg2['src']) and
                 (msg1['msg']['localpref'] == msg2['msg']['localpref']) and
