@@ -123,9 +123,9 @@ class Router:
 
 
     def coalesce(self):
-        aggregate = self.getCoalesce(self.forwardingInfo)
-        if aggregate:
-            RouterUtils.handleCoalesce(aggregate[0], aggregate[1], self.routes, self.forwardingInfo)
+        coalescable = self.getCoalesce(self.forwardingInfo)
+        if coalescable:
+            RouterUtils.handleCoalesce(coalescable, self.routes, self.forwardingInfo)
             self.coalesce()
         return False
 

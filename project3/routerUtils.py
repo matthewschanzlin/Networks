@@ -65,7 +65,9 @@ class RouterUtils:
 
         return None
 
-    def handleCoalesce(key1, key2, routes, forwardingInfo):
+    def handleCoalesce(keys, routes, forwardingInfo):
+        key1 = key[0]
+        key2 = key[1]
         ip, cidr = key1.split("/")
         binary = list(''.join(format(int(x), '08b') for x in ip.split(".")))
         binary[int(cidr) - 1] = '0'
