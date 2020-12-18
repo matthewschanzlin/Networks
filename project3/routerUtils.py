@@ -168,36 +168,3 @@ class RouterUtils:
         newIP = ipaddress.IPv4Address(newPacket['src'])
         oldIP = ipaddress.IPv4Address(oldPacket['src'])
         return (newIP < oldIP)
-
-    def calculateNetAddress(address, mask):
-        netmaskLength = lambda s: {'0': 0, '128': 1, '192': 2, '224': 3, '240': 4, '248': 5, '252': 6, '254': 7, '255': 8}[s]
-        maskVal = 0
-        maskArr = mask.split(".")
-        for i in range(len(maskArr)):
-            maskVal += netmaskLength(maskArr[i])
-
-        return address + "/" + str(maskVal)
-
-    def removePath(network, srcif, maskConvTable, routes, forwardingInfo):
-        networkAddress = RouterUtils.calculateNetAddress(network["network"], network["netmask"], maskConvTable)
-        if forwardingInfo.get(networkAddress) == None:
-          return True
-
-        n = len(forwardingInfo[networkAddress])
-        i = 0
-        while i < n:
-          if forwardingInfo[networkAddress][i]["src"] == srcif:
-            del forwardingInfo[networkAddress][i]
-            n -= 1
-          else:
-            i += 1
-
-        if len(forwardingInfo[networkAddress]) == 0:
-          del forwardingInfo[networkAddress]
-          del routes[networkAddress]
-          return True
-
-        if routes[networkAddress] == srcif:
-          routes[networkAddress] = forwardingInfo[networkAddress][0]["src"]
-
-        return True
