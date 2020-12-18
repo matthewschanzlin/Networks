@@ -7,6 +7,32 @@ CUST = 'cust'
 class RouterUtils:
     format_packet = lambda srcif, p: {'src': '.'.join(srcif.split('.')[:-1] + ['1']), 'dst': p['src'], 'type': 'no route', 'msg': {}}
 
+
+    def specialForward(srcif, packet, type, sockets, relations):
+        forward_packet = {'src': None, 'dst': None, 'type': type, 'msg': packet['msg']}
+        if (relations[packet['src']] == CUST):
+            RouterUtils.forwardSocks(srcif, forward_packet, sockets)
+        else:
+            RouterUtils.forwardRelations(srcif, forward_packet, relations, sockets)
+
+    def forwardSocks(srcif, packet, sockets):
+        for sock in sockets:
+            if sock != srcif:
+                packet['src'] = '.'.join(sock.split('.')[:-1] + ['1'])
+                packet['dst'] = sock
+                sockets[sock].send(json.dumps(packet).encode('ASCII'))
+
+    def forwardRelations(srcif, packet, relations, sockets):
+        for relation in relations:
+            if (relations[relation] == CUST) and (relation != srcif):
+                packet['src'] = '.'.join(relation.split('.')[:-1] + ['1'])
+                packet['dst'] = relation
+                sockets[sock].send(json.dumps(packet).encode('ASCII'))
+
+
+
+
+
     def sameAttributes(msg1, msg2):
         return ((msg1['src'] == msg2['src']) and
                 (msg1['msg']['localpref'] == msg2['msg']['localpref']) and
