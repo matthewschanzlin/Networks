@@ -64,20 +64,11 @@ class Router:
         ports = list(filter(f, routes.items()))
         return ports
 
-
     def filterRelationships(self, ports, srcif, relations):
-        keysToRemove = {}
+        f = lambda port: relations[port[1]] == CUST
         if relations[srcif] != CUST:
-          for port in ports:
-            if relations[port[1]] != CUST:
-              keysToRemove[port[0]] = True
-
-        finalPorts = []
-        for port in ports:
-          if port[0] not in keysToRemove:
-              finalPorts.append(port)
-
-        return finalPorts
+            ports = list(filter(f, ports))
+        return ports
 
     def getLongestPrefix(self, ports, sockets):
         sock = None
