@@ -101,12 +101,9 @@ class Router:
 
     def update(self, srcif, packet):
         self.updates[srcif] = [packet] if srcif not in self.updates else self.updates[srcif] + [packet]
-        updatedRoute = RouterUtils.configureNetmask(packet['msg']['network'], packet['msg']['netmask'])
-
         self.updateHelper(packet)
-        packet['msg']['ASPath'] = packet['msg']['ASPath'] + [args.asn]
+        packet[MESG][APTH] = packet[MESG][APTH] + [args.asn]
         RouterUtils.specialForward(srcif, packet, UPDT, self.sockets, self.relations)
-
         self.coalesce()
         return False
 
@@ -128,7 +125,7 @@ class Router:
             for k in range(len(toDelete)):
                 self.updates[srcif].pop(toDelete[k])
 
-        
+
         for key in self.updates:
             for val in self.updates[key]:
                 self.updateHelper(val)
