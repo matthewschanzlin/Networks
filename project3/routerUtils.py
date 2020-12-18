@@ -139,7 +139,7 @@ class RouterUtils:
     def insertUpdate(update, address, forwardingInfo):
         notInserted = True
         index = 0
-        while notInserted and index < len(forwardingInfo):
+        while notInserted and index < len(forwardingInfo[address]):
             if RouterUtils.chooseNextPath(update, forwardingInfo[address][index]):
                 forwardingInfo[address].insert(index, update)
                 notInserted = False
