@@ -91,27 +91,24 @@ class Router:
             self.coalesce()
         return False
 
+    def updateHelper(self, updatedRoute, packet):
+        if (self.routes.get(updatedRoute) == None):
+            self.routes[updatedRoute] = packet['src']
+        elif (RouterUtils.chooseNextPath(packet, self.forwardingInfo[updatedRoute][0])):
+            self.routes[updatedRoute] = packet['src']
+        RouterUtils.handleUpdate(updatedRoute, packet, self.routes, self.forwardingInfo)
+
     def update(self, srcif, packet):
-        if (self.updates.get(srcif) == None):
-            self.updates[srcif] = [packet]
-        else:
-            self.updates[srcif].append(packet)
+        self.updates[srcif] = [packet] if srcif not in self.updates else self.upates[srcif] + [packet]
+        updatedRoute = RouterUtils.configureNetmask(packet['msg']['network'], packet['msg']['netmask'])
 
-        networkAddress = RouterUtils.configureNetmask(packet['msg']['network'], packet['msg']['netmask'])
-
-        if (self.routes.get(networkAddress) == None):
-            self.routes[networkAddress] = packet['src']
-        elif (RouterUtils.chooseNextPath(packet, self.forwardingInfo[networkAddress][0])):
-            self.routes[networkAddress] = packet['src']
-        RouterUtils.handleUpdate(networkAddress, packet, self.routes, self.forwardingInfo)
-
+        self.updateHelper(updatedRoute, packet)
         packet['msg']['ASPath'] = packet['msg']['ASPath'] + [args.asn]
         RouterUtils.specialForward(srcif, packet, UPDT, self.sockets, self.relations)
 
         self.coalesce()
         return False
 
-        del packet["msg"]["ASPath"][-1]
 
     def revoke(self, srcif, packet):
         self.routes = {}
@@ -135,11 +132,7 @@ class Router:
             for val in self.updates[key]:
                 networkAddress = RouterUtils.configureNetmask(val["msg"]["network"], val["msg"]["netmask"])
 
-                if (self.routes.get(networkAddress) == None):
-                    self.routes[networkAddress] = val["src"]
-                elif (RouterUtils.chooseNextPath(val, self.forwardingInfo[networkAddress][0])):
-                    self.routes[networkAddress] = val["src"]
-                RouterUtils.handleUpdate(networkAddress, val, self.routes, self.forwardingInfo)
+                self.updateHelper(networkAddress, val)
                 self.coalesce()
 
         RouterUtils.specialForward(srcif, packet, RVKE, self.sockets, self.relations)
