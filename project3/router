@@ -130,10 +130,14 @@ class Router:
         return True
 
     def build_forwarding_table(forwardingInfo):
-        fowardingTable = []
+        fowardTable = []
         for key in forwardingInfo:
-            for item in forwardingInfo[key]:
-                fowardingTable.append({'network': key.split('/')[0], 'netmask': item['msg']['netmask'], 'peer': item['src']})
+            network, cidr = key.split('/')
+            for i in range(len(forwardingInfo[key])):
+                netmask = forwardingInfo[key][i]['msg']['netmask']
+                peer = forwardingInfo[key][i]['src']
+                entry = {'network': network, 'netmask': forwardingInfo[key][i]['msg']['netmask'], 'peer': forwardingInfo[key][i]['src']}
+                fowardTable.append(entry)
         return forwardTable
 
     def dump(self, srcif, packet):
