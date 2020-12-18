@@ -90,7 +90,7 @@ class Router:
         else:
             self.updates[srcif].append(packet)
 
-        networkAddress = RouterUtils.calculateNetAddress(packet['msg']['network'], packet['msg']['netmask'])
+        networkAddress = RouterUtils.configureNetmask(packet['msg']['network'], packet['msg']['netmask'])
 
         if (self.routes.get(networkAddress) == None):
             self.routes[networkAddress] = packet['src']
@@ -126,7 +126,7 @@ class Router:
 
         for key in self.updates:
             for val in self.updates[key]:
-                networkAddress = RouterUtils.calculateNetAddress(val["msg"]["network"], val["msg"]["netmask"])
+                networkAddress = RouterUtils.configureNetmask(val["msg"]["network"], val["msg"]["netmask"])
 
                 if (self.routes.get(networkAddress) == None):
                     self.routes[networkAddress] = val["src"]

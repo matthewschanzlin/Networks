@@ -168,3 +168,9 @@ class RouterUtils:
         newIP = ipaddress.IPv4Address(newPacket['src'])
         oldIP = ipaddress.IPv4Address(oldPacket['src'])
         return (newIP < oldIP)
+
+    def configureNetmask(address, mask):
+        netmaskLength = lambda s: {'0': 0, '128': 1, '192': 2, '224': 3, '240': 4, '248': 5, '252': 6, '254': 7, '255': 8}[s]
+        netmask = sum(list(map(netmaskLength, mask.split('.'))))
+        address_string = '/'.join([address, str(netmask)])
+        return address_string
