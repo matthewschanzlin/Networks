@@ -122,34 +122,47 @@ class RouterUtils:
         ASPATH = 'ASPath'
         origin = 'origin'
 
-        if (newPacket[msg][localpref] > oldPacket[msg][localpref]):
+        t1 = (newPacket[msg][localpref] > oldPacket[msg][localpref])
+        t2 = (newPacket[msg][localpref] < oldPacket[msg][localpref])
+        t3 = (newPacket[msg][selfOrigin] and not(oldPacket[msg][selfOrigin]))
+        t4 = (not(newPacket[msg][selfOrigin]) and (oldPacket[msg][selfOrigin]))
+        t5 = (len(newPacket[msg][ASPATH]) < len(oldPacket[msg][ASPATH]))
+        t6 = (len(newPacket[msg][ASPATH]) > len(oldPacket[msg][ASPATH]))
+        t7 = ((newPacket[msg][origin] == "IGP") and (not(oldPacket[msg][origin]) == "IGP"))
+        t8 = ((not(newPacket[msg][origin]) == "IGP") and (oldPacket[msg][origin] == "IGP"))
+        t9 = ((newPacket[msg][origin] == "EGP") and (not(oldPacket[msg][origin]) == "EGP"))
+        t10 = ((not(newPacket[msg][origin]) == "EGP") and (oldPacket[msg][origin] == "EGP"))
+        t11 = ((newPacket[msg][origin] == "UNK") and (not(oldPacket[msg][origin]) == "UNK"))
+        t12 = ((not(newPacket[msg][origin]) == "UNK") and (oldPacket[msg][origin] == "UNK"))
+
+        if t1:
             return True
-        elif (newPacket[msg][localpref] < oldPacket[msg][localpref]):
+        elif t2:
             return False
 
-        if (newPacket[msg][selfOrigin] and not(oldPacket[msg][selfOrigin])):
+        if t3:
             return True
-        elif (not(newPacket[msg][selfOrigin]) and (oldPacket[msg][selfOrigin])):
+        elif t4:
             return False
 
-        if (len(newPacket[msg][ASPATH]) < len(oldPacket[msg][ASPATH])):
+        if t5:
             return True
-        elif (len(newPacket[msg][ASPATH]) > len(oldPacket[msg][ASPATH])):
+        elif t6:
             return False
 
-        if ((newPacket[msg][origin] == "IGP") and (not(oldPacket[msg][origin]) == "IGP")):
+        if t7:
             return True
-        elif ((not(newPacket[msg][origin]) == "IGP") and (oldPacket[msg][origin] == "IGP")):
+        elif t8:
             return False
 
-        if ((newPacket[msg][origin] == "EGP") and (not(oldPacket[msg][origin]) == "EGP")):
+        if t9:
             return True
-        elif ((not(newPacket[msg][origin]) == "EGP") and (oldPacket[msg][origin] == "EGP")):
+        elif t10:
             return False
 
-        if ((newPacket[msg][origin] == "UNK") and (not(oldPacket[msg][origin]) == "UNK")):
+        if t11:
             return True
-        elif ((not(newPacket[msg][origin]) == "UNK") and (oldPacket[msg][origin] == "UNK")):
+        elif t12:
             return False
 
         newIP = ipaddress.IPv4Address(newPacket['src'])
