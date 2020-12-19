@@ -1,0 +1,3 @@
+The biggest challenge with this assignment was probably the coalescing. I initially made some errors with some of the finer details regarding the math/conversions for converting
+binary ips to decimal ips and vice versa as well as the netmasks. These errors were a little bit hard to track down since the code looked like it was correct but with some good debugging
+and print statements I figured out my calculations were skewed. Overall this assignment took a lot of time and I think that if I spent some time earlier on to get the tests to work on my local machine that would have made development a bit smoother.
