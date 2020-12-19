@@ -95,14 +95,8 @@ class RouterUtils:
 
     def buildNewAddress(key1, key2):
         ip, cidr = key1.split("/")
-        binary = RouterUtils.build_comparison_bit(key1)
-        finalBinary = ''
-        for digit in range(0, len(binary):
-            if digit == int(cidr) - 1:
-                finalBinary += '0'
-            else:
-                finalBinary += binary[digit]
-                
+        binary = list(''.join(format(int(x), '08b') for x in ip.split(".")))
+        binary[int(cidr) - 1] = '0'
         newipbinary = ''.join(binary)
         groupsOfEight = [newipbinary[i: i + 8] for i in range(0, len(newipbinary), 8)]
         for i in range(len(groupsOfEight)):
