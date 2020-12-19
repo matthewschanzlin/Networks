@@ -115,8 +115,8 @@ class Router:
         self.routes = {}
         self.forwardingInfo = {}
         for msg_data in packet[MESG]:
-            match = lambda a, b: a[MESG][NTWK] == b[NTWK] and a[MESG][NMSK] == b[NMSK]
-            new_updates = list(map(match, self.updates[srcif]))
+            match = lambda a: not a[MESG][NTWK] == msg_data[NTWK] or not a[MESG][NMSK] == msg_data[NMSK]
+            new_updates = list(filter(match, self.updates[srcif]))
             self.updates[srcif] = new_updates
         for packets in self.updates.values():
             self.revokeHelper(packets)
