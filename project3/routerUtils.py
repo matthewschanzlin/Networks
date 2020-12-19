@@ -114,16 +114,15 @@ class RouterUtils:
         binaryNums = [firstOctet, secondOctet, thirdOctet, fourthOctet]
         convert = lambda n: str(int(n, 2))
         decimalNums = list(map(convert, binaryNums))
-        newAddress = '.'.join(decimalNums) + '/'str(int(key.split('/')[1]) - 1)
+        newAddress = '.'.join(decimalNums) + '/' + str(int(key.split('/')[1]) - 1)
         return newAddress
 
     def handleCoalesce(addresses, routes, forwardingInfo):
         forwardingInfo1 = forwardingInfo[addresses[0]]
         forwardingInfo2 = forwardingInfo[addresses[1]]
         newAddress = RouterUtils.buildNewAddress(addresses[0])
-        everyForwardingInfoCombo = RouterUtils.createEveryCombo(addresses)
 
-        for index1 in range(0, len(forwardinInfo1)):
+        for index1 in range(0, len(forwardingInfo1)):
             updatespacket = forwardingInfo1[index1]
             updatespacket[MESG][NMSK] = str(IPv4Network(newAddress).netmask)
             updatespacket[MESG][NTWK] = newAddress.split('/')[0]
