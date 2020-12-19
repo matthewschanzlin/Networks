@@ -107,50 +107,36 @@ class RouterUtils:
 
     def buildNewAddress(key):
         newipbinary = RouterUtils.maskAddress(key)
-
         firstOctet = newipbinary[0:8]
         secondOctet = newipbinary[8:16]
         thirdOctet = newipbinary[16:24]
         fourthOctet = newipbinary[24:32]
-
         binaryNums = [firstOctet, secondOctet, thirdOctet, fourthOctet]
-
         convert = lambda n: str(int(n, 2))
-
         decimalNums = list(map(convert, binaryNums))
+        newAddress = '.'.join(decimalNums) + '/'str(int(key.split('/')[1]) - 1)
+        return newAddress
 
-        newIp = '.'.join(decimalNums)
-        newCidr = str(int(key.split('/')[1]) - 1)
+    def handleCoalesce(addresses, routes, forwardingInfo):
+        forwardingInfo1 = forwardingInfo[addresses[0]]
+        forwardingInfo2 = forwardingInfo[addresses[1]]
+        newAddress = RouterUtils.buildNewAddress(addresses[0])
+        everyForwardingInfoCombo = RouterUtils.createEveryCombo(addresses)
 
-        n = newIp + '/' + newCidr
-        return n
+        for index1 in range(0, len(forwardinInfo1)):
+            updatespacket = forwardingInfo1[index1]
+            updatespacket[MESG][NMSK] = str(IPv4Network(newAddress).netmask)
+            updatespacket[MESG][NTWK] = newAddress.split('/')[0]
 
-
-
-    def handleCoalesce(keys, routes, forwardingInfo):
-        key1 = keys[0]
-        key2 = keys[1]
-        newKey = RouterUtils.buildNewAddress(key1)
-
-        newNetmask = str(IPv4Network(newKey).netmask)
-        updates1 = forwardingInfo[key1]
-        updates2 = forwardingInfo[key2]
-
-        for i in range(len(updates1)):
-          for j in range(len(updates2)):
-            if RouterUtils.info_matching((updates1[i], updates2[j])):
-              newMsg = updates1[i]
-              newMsg['msg']['network'] = newKey.split('/')[0]
-              newMsg['msg']['netmask'] = newNetmask
-              RouterUtils.handleUpdate(newKey, newMsg, routes, forwardingInfo)
-              updates1.pop(i)
-              updates2.pop(j)
-              routes[newKey] = forwardingInfo[newKey][0]["src"]
-
-              RouterUtils.manageCoalesceAddress(key1, routes, forwardingInfo, updates1)
-              RouterUtils.manageCoalesceAddress(key2, routes, forwardingInfo, updates2)
-
-              return True
+            for index2 in range(0, len(forwardingInfo2)):
+                if RouterUtils.info_matching((forwardingInfo1[index1], forwardingInfo2[index2])):
+                    RouterUtils.handleUpdate(newAddress, updatespacket, routes, forwardingInfo)
+                    forwardingInfo1.pop(index1)
+                    forwardingInfo2.pop(index2)
+                    RouterUtils.manageCoalesceAddress(addresses[0], routes, forwardingInfo, forwardingInfo1)
+                    RouterUtils.manageCoalesceAddress(addresses[1], routes, forwardingInfo, forwardingInfo2)
+                    routes[newAddress] = forwardingInfo[newAddress][0][SRCE]
+                    return True
         return False
 
 
