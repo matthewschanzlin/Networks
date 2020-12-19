@@ -83,10 +83,11 @@ class RouterUtils:
         c2 = comparison_bits[0][comparison_bit] != comparison_bits[1][comparison_bit]
         return c1 and c2
 
-    def manageCoalesceAddress(address, routes, forwardingInfo):
+    def manageCoalesceAddress(address, routes, forwardingInfo, update):
         coalescable = len(forwardingInfo[address]) > 0
         if coalescable:
             routes[address] = forwardingInfo[address][0][SRCE]
+            forwardingInfo[address] = update
         else:
             forwardingInfo.pop(address, None)
             routes.pop(address, None)
@@ -120,12 +121,10 @@ class RouterUtils:
               RouterUtils.handleUpdate(newKey, newMsg, routes, forwardingInfo)
               updates1.pop(i)
               updates2.pop(j)
-              forwardingInfo[key1] = updates1
-              forwardingInfo[key2] = updates2
               routes[newKey] = forwardingInfo[newKey][0]["src"]
 
-              RouterUtils.manageCoalesceAddress(key1, routes, forwardingInfo)
-              RouterUtils.manageCoalesceAddress(key2, routes, forwardingInfo)
+              RouterUtils.manageCoalesceAddress(key1, routes, forwardingInfo, updates1)
+              RouterUtils.manageCoalesceAddress(key2, routes, forwardingInfo, updates2)
 
               return True
         return False
