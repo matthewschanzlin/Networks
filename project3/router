@@ -87,7 +87,7 @@ class Router:
                     if len(sameAttributeMessages) > 0:
                         matching_info = (pair[0][0], pair[1][0])
         if matching_info:
-            RouterUtils.handleCoalesce(matching_info, self.routes, self.forwardingInfo)
+            RouterUtils.coalesceHelper(matching_info, self.routes, self.forwardingInfo)
             self.coalesce()
         return False
 

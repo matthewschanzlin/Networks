@@ -69,7 +69,7 @@ class RouterUtils:
         bits = ''
         comparator = '08b'
 
-        for part in address.split("/")[0].split('.'):
+        for part in address.split('/')[0].split('.'):
             bits +=  format(int(part), comparator)
 
         return bits
@@ -82,9 +82,9 @@ class RouterUtils:
         return comparison_bits
 
     def coalescableAddresses(address1, address2):
-        comparison_bit = int(address1.split("/")[1]) - 1
+        comparison_bit = int(address1.split('/')[1]) - 1
         comparison_bits = RouterUtils.build_comparison_bits([address1, address2])
-        c1 = address1.split("/")[1] == address2.split("/")[1]
+        c1 = address1.split('/')[1] == address2.split('/')[1]
         c2 = comparison_bits[0][comparison_bit] != comparison_bits[1][comparison_bit]
         return c1 and c2
 
@@ -96,7 +96,6 @@ class RouterUtils:
         else:
             forwardingInfo.pop(address, None)
             routes.pop(address, None)
-
 
 
 
@@ -114,15 +113,16 @@ class RouterUtils:
         binaryNums = [firstOctet, secondOctet, thirdOctet, fourthOctet]
         convert = lambda n: str(int(n, 2))
         decimalNums = list(map(convert, binaryNums))
-        newAddress = '.'.join(decimalNums) + '/' + str(int(key.split('/')[1]) - 1)
+        newAddress = '.'.join(decimalNums) + '/'str(int(key.split('/')[1]) - 1)
         return newAddress
 
-    def handleCoalesce(addresses, routes, forwardingInfo):
+    def coalesceHelper(addresses, routes, forwardingInfo):
         forwardingInfo1 = forwardingInfo[addresses[0]]
         forwardingInfo2 = forwardingInfo[addresses[1]]
         newAddress = RouterUtils.buildNewAddress(addresses[0])
+        everyForwardingInfoCombo = RouterUtils.createEveryCombo(addresses)
 
-        for index1 in range(0, len(forwardingInfo1)):
+        for index1 in range(0, len(forwardinInfo1)):
             updatespacket = forwardingInfo1[index1]
             updatespacket[MESG][NMSK] = str(IPv4Network(newAddress).netmask)
             updatespacket[MESG][NTWK] = newAddress.split('/')[0]
@@ -137,13 +137,6 @@ class RouterUtils:
                     routes[newAddress] = forwardingInfo[newAddress][0][SRCE]
                     return True
         return False
-
-
-
-
-
-
-
 
     def formatUpdate(packet):
         update = {'src': packet[SRCE], 'dst': packet[DEST], 'type': UPDT}
