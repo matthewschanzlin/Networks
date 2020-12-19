@@ -115,14 +115,9 @@ class Router:
         self.routes = {}
         self.forwardingInfo = {}
         for msg_data in packet[MESG]:
-            index = 0
-            while index < len(self.updates[srcif]):
-                match = lambda a, b: a[NTWK] == b[NTWK] and a[NMSK] == b[NMSK]
-                if match(self.updates[srcif][index][MESG], msg_data):
-                    self.updates[srcif].pop(index)
-                else:
-                    index += 1
-
+            match = lambda a, b: a[MESG][NTWK] == b[NTWK] and a[MESG][NMSK] == b[NMSK]
+            new_updates = list(map(match, self.updates[srcif]))
+            self.updates[srcif] = new_updates
         for packets in self.updates.values():
             self.revokeHelper(packets)
 
