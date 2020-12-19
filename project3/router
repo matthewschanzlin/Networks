@@ -118,10 +118,9 @@ class Router:
                 else:
                     index += 1
 
-        for key in self.updates:
-            item = self.updates[key]
-            for packet in item:
-                self.updateHelper(packet)
+        for packets in self.updates.values():
+            for v in packets:
+                self.updateHelper(v)
                 self.coalesce()
 
         RouterUtils.specialForward(srcif, packet, RVKE, self.sockets, self.relations)
