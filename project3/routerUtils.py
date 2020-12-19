@@ -100,24 +100,20 @@ class RouterUtils:
 
 
 
-
+    def maskAddress(key):
+        binary = list(RouterUtils.convertToBits(key.split('/')[0]))
+        maskedBitsList = binary[int(key.split('/')[1]) - 1] = '0'
+        return ''.join(maskedBitsList)
 
     def buildNewAddress(key):
-        key1 = key
-        ip, cidr = key1.split("/")
-        binary = list(RouterUtils.convertToBits(key1))
-        binary[int(cidr) - 1] = '0'
-        newipbinary = ''.join(binary)
-
-        groupsOfEight = [newipbinary[i: i + 8] for i in range(0, len(newipbinary), 8)]
-        for i in range(len(groupsOfEight)):
-          groupsOfEight[i] = str(int(groupsOfEight[i], 2))
-
-        newIp = '.'.join(groupsOfEight)
-        newCidr = str(int(cidr) - 1)
-
-        n = newIp + '/' + newCidr
-        return n
+        newipbinary = RouterUtils.maskAddress(key)
+        newipnums = []
+        for i in range(0, 4):
+            start = i * 8
+            end = ((i + 1) * 8) - 1
+            newipnums.append(str(int(newipbinary[start:end], 2)))
+        new_address = '.'.join(newipnums) + '/' + str(int(key.split('/'[1])) - 1)
+        return new_address
 
 
 
