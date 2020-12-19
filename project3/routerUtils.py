@@ -65,15 +65,20 @@ class RouterUtils:
         fields = RouterUtils.check_match(info[0]['msg'], info[1]['msg'], ['localpref', 'selfOrigin', 'ASPath', 'origin'])
         return src and fields
 
-    def build_comparison_bits(bits):
-        comparison_bits = ['', '']
+    def convertToBits(address):
+        bits = ''
         comparator = '08b'
 
-        for part in bits[0].split("/")[0].split('.'):
-            comparison_bits[0] +=  format(int(part), comparator)
+        for part in address.split("/")[0].split('.'):
+            bits +=  format(int(part), comparator)
 
-        for part in bits[1].split("/")[0].split('.'):
-            comparison_bits[1] += format(int(part), comparator)
+        return bits
+
+
+    def build_comparison_bits(bits):
+        comparison_bits = ['', '']
+        comparison_bits[0] = RouterUtils.convertToBits(bits[0])
+        comparison_bits[1] = RouterUtils.convertToBits(bits[1])
         return comparison_bits
 
     def coalescableAddresses(address1, address2):
@@ -100,9 +105,10 @@ class RouterUtils:
     def buildNewAddress(key):
         key1 = key
         ip, cidr = key1.split("/")
-        binary = list(''.join(format(int(x), '08b') for x in ip.split(".")))
+        binary = list(RouterUtils.convertToBits(key1))
         binary[int(cidr) - 1] = '0'
         newipbinary = ''.join(binary)
+
         groupsOfEight = [newipbinary[i: i + 8] for i in range(0, len(newipbinary), 8)]
         for i in range(len(groupsOfEight)):
           groupsOfEight[i] = str(int(groupsOfEight[i], 2))
@@ -128,7 +134,7 @@ class RouterUtils:
           for j in range(len(updates2)):
             if RouterUtils.info_matching((updates1[i], updates2[j])):
               newMsg = updates1[i]
-              newMsg['msg']['network'] = newIp
+              newMsg['msg']['network'] = newKey.split('/')[0]
               newMsg['msg']['netmask'] = newNetmask
               RouterUtils.handleUpdate(newKey, newMsg, routes, forwardingInfo)
               updates1.pop(i)
@@ -146,7 +152,7 @@ class RouterUtils:
 
 
 
-        
+
 
     def formatUpdate(packet):
         update = {'src': packet[SRCE], 'dst': packet[DEST], 'type': UPDT}
