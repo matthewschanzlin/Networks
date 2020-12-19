@@ -83,17 +83,22 @@ class RouterUtils:
         c2 = comparison_bits[0][comparison_bit] != comparison_bits[1][comparison_bit]
         return c1 and c2
 
-    def manageCoalesceAddress(address, routes, forwardingInfo):
+    def manageCoalesceAddress(address, routes, forwardingInfo, update):
         coalescable = len(forwardingInfo[address]) > 0
         if coalescable:
             routes[address] = forwardingInfo[address][0][SRCE]
+            forwardingInfo[address] = update
         else:
             forwardingInfo.pop(address, None)
             routes.pop(address, None)
 
-    def handleCoalesce(keys, routes, forwardingInfo):
-        key1 = keys[0]
-        key2 = keys[1]
+
+
+
+
+
+    def buildNewAddress(key):
+        key1 = key
         ip, cidr = key1.split("/")
         binary = list(''.join(format(int(x), '08b') for x in ip.split(".")))
         binary[int(cidr) - 1] = '0'
@@ -105,7 +110,15 @@ class RouterUtils:
         newIp = '.'.join(groupsOfEight)
         newCidr = str(int(cidr) - 1)
 
-        newKey = newIp + '/' + newCidr
+        n = newIp + '/' + newCidr
+        return n
+
+
+
+    def handleCoalesce(keys, routes, forwardingInfo):
+        key1 = keys[0]
+        key2 = keys[1]
+        newKey = RouterUtils.buildNewAddress(key1)
 
         newNetmask = str(IPv4Network(newKey).netmask)
         updates1 = forwardingInfo[key1]
@@ -120,15 +133,20 @@ class RouterUtils:
               RouterUtils.handleUpdate(newKey, newMsg, routes, forwardingInfo)
               updates1.pop(i)
               updates2.pop(j)
-              forwardingInfo[key1] = updates1
-              forwardingInfo[key2] = updates2
               routes[newKey] = forwardingInfo[newKey][0]["src"]
 
-              RouterUtils.manageCoalesceAddress(key1, routes, forwardingInfo)
-              RouterUtils.manageCoalesceAddress(key2, routes, forwardingInfo)
+              RouterUtils.manageCoalesceAddress(key1, routes, forwardingInfo, updates1)
+              RouterUtils.manageCoalesceAddress(key2, routes, forwardingInfo, updates2)
 
               return True
         return False
+
+
+
+
+
+
+        
 
     def formatUpdate(packet):
         update = {'src': packet[SRCE], 'dst': packet[DEST], 'type': UPDT}
