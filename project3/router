@@ -106,7 +106,7 @@ class Router:
         self.coalesce()
         return False
 
-    def revoke_helper(self, packets):
+    def revokeHelper(self, packets):
         for update in packets:
             self.updateHelper(update)
             self.coalesce()
@@ -117,7 +117,8 @@ class Router:
         for msg_data in packet[MESG]:
             index = 0
             while index < len(self.updates[srcif]):
-                if (self.updates[srcif][index]["msg"]["network"] == msg_data["network"]) and (self.updates[srcif][index]["msg"]["netmask"] == msg_data["netmask"]):
+                match = lambda a, b: a[NTWK] == b[NTWK] and a[NMSK] == b[NMSK]
+                if match(self.updates[srcif][index][MESG], msg_data):
                     self.updates[srcif].pop(index)
                 else:
                     index += 1
