@@ -108,11 +108,18 @@ class RouterUtils:
     def buildNewAddress(key):
         newipbinary = RouterUtils.maskAddress(key)
 
-        groupsOfEight = [newipbinary[i: i + 8] for i in range(0, len(newipbinary), 8)]
-        for i in range(len(groupsOfEight)):
-            groupsOfEight[i] = str(int(groupsOfEight[i], 2))
+        firstOctet = newipbinary[0:8]
+        secondOctet = newipbinary[8:16]
+        thirdOctet = newipbinary[16:24]
+        fourthOctet = newipbinary[24:32]
 
-        newIp = '.'.join(groupsOfEight)
+        binaryNums = [firstOctet, secondOctet, thirdOctet, fourthOctet]
+
+        convert = lambda n: str(int(n, 2))
+
+        decimalNums = list(map(convert, binaryNums))
+
+        newIp = '.'.join(decimalNums)
         newCidr = str(int(key.split('/')[1]) - 1)
 
         n = newIp + '/' + newCidr
