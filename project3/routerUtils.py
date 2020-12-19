@@ -65,15 +65,16 @@ class RouterUtils:
         fields = RouterUtils.check_match(info[0]['msg'], info[1]['msg'], ['localpref', 'selfOrigin', 'ASPath', 'origin'])
         return src and fields
 
-    def build_comparison_bits(bits):
-        comparison_bits = ['', '']
+    def build_comparison_bit(bits):
+        new_bits = ''
         comparator = '08b'
+        for part in bits.split("/")[0].split('.'):
+            new_bits +=  format(int(part), comparator)
 
-        for part in bits[0].split("/")[0].split('.'):
-            comparison_bits[0] +=  format(int(part), comparator)
+        return new_bits
 
-        for part in bits[1].split("/")[0].split('.'):
-            comparison_bits[1] += format(int(part), comparator)
+    def build_comparison_bits(bits):
+        comparison_bits = [RouterUtils.build_comparison_bit(bits[0]), RouterUtils.build_comparison_bit(bits[1])]
         return comparison_bits
 
     def coalescableAddresses(address1, address2):
@@ -92,11 +93,9 @@ class RouterUtils:
             forwardingInfo.pop(address, None)
             routes.pop(address, None)
 
-    def handleCoalesce(keys, routes, forwardingInfo):
-        key1 = keys[0]
-        key2 = keys[1]
+    def buildNewAddress(key1, key2):
         ip, cidr = key1.split("/")
-        binary = list(''.join(format(int(x), '08b') for x in ip.split(".")))
+        binary = RouterUtils.build_comparison_bit(key1)
         binary[int(cidr) - 1] = '0'
         newipbinary = ''.join(binary)
         groupsOfEight = [newipbinary[i: i + 8] for i in range(0, len(newipbinary), 8)]
@@ -107,6 +106,13 @@ class RouterUtils:
         newCidr = str(int(cidr) - 1)
 
         newKey = newIp + '/' + newCidr
+
+        return newKey
+
+    def handleCoalesce(keys, routes, forwardingInfo):
+        key1 = keys[0]
+        key2 = keys[1]
+        newKey = RouterUtils.buildNewAddress(key1, key2)
 
         newNetmask = str(IPv4Network(newKey).netmask)
         updates1 = forwardingInfo[key1]
